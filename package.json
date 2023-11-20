@@ -1,0 +1,6 @@
+{
+  "name": "markov-namegen",
+  "devDependencies": {
+    "typescript": "^5.3.2"
+  }
+}
