@@ -21,7 +21,7 @@ class Model {
     /**
      * The Markov chains.
      */
-    private _chains: Map<string, number[]>;
+    private _chains!: Map<string, number[]>;
 
     /**
      * Creates a new Markov model.
@@ -40,6 +40,9 @@ class Model {
         this._observations = new Map<string, string[]>();
         this.train(data);
         this.buildChains();
+
+//        console.log(this._observations);
+//        console.log(this._chains);
     }
 
     /**
@@ -77,12 +80,15 @@ class Model {
             d = ("#".repeat(this._order)) + d + "#";
             for (let i = 0; i <= (d.length - this._order); i++) {
                 const key = d.substring(i, i + this._order);
+//                console.log(key)
                 let value = this._observations.get(key);
                 if (value == null) {
                     value = new Array<string>();
                     this._observations.set(key, value);
                 }
                 value.push(d.charAt(i + this._order));
+
+//                console.log(d.charAt(i + this._order));
             }
         }
     }
@@ -91,16 +97,18 @@ class Model {
      * Builds the Markov chains for the model.
      */
     private buildChains() {
-        const chains = new Map<string, number[]>();
+        this._chains = new Map<string, number[]>();
 
-        for (let context in this._observations.keys()) {
-            for (let prediction in this._alphabet) {
-                let value = chains.get(context);
+        for (let context of this._observations.keys()) {
+            for (let prediction of this._alphabet) {
+                let value = this._chains.get(context);
                 if (value == null) {
                     value = new Array<number>();
-                    chains.set(context, value);
+                    this._chains.set(context, value);
                 }
                 value.push(this._prior + this.countMatches(this._observations.get(context), prediction));
+
+//                console.log(context + " " + prediction + " -> " + (this.countMatches(this._observations.get(context), prediction)));
             }
         }
     }
@@ -131,7 +139,7 @@ class Model {
 
         const rand = Math.random() * accumulator;
         for (let i = 0; i <= totals.length; i++) {
-            if (rand > totals[i]) {
+            if (rand < totals[i]) {
                 return i;
             }
         }

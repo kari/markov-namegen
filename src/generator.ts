@@ -50,7 +50,7 @@ class Generator {
         this._backoff = backoff;
 
         const letters = new Set<string>();
-        for (const word in data) {
+        for (const word of data) {
             for (const letter of word) {
                 letters.add(letter);
             }
@@ -67,14 +67,15 @@ class Generator {
         });
         domain.unshift("#");
 
-        const models: Model[] = [];
+        this._models = [];
         if (this._backoff) {
             for (let i = 0; i <= order; i++) {
-                models.push(new Model(data, order - i, prior, domain)); // from highest to lowest order
+                this._models.push(new Model(data, order - i, prior, domain)); // from highest to lowest order
             }
         } else {
-            models.push(new Model(data, order, prior, domain));
+            this._models.push(new Model(data, order, prior, domain));
         }
+//        console.log(this._models);
 
     }
 
@@ -84,8 +85,8 @@ class Generator {
     */
     generate(): string {
         let word = "#".repeat(this.order);
-
         let letter = this.getLetter(word);
+
         while (letter != "#" && letter != null) {
             if (letter != null) {
                 word += letter;

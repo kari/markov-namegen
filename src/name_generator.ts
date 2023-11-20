@@ -34,11 +34,12 @@ class NameGenerator {
      * @return  A word that meets the specified constraints, or null if the generated word did not meet the constraints.
      */
     generateName(minLength: number, maxLength: number, startsWith: string, endsWith: string, includes: string, excludes: string): string | null {
-        let name = "";
+        let name: string;
 
         name = this._generator.generate();
-        name = name.replace("#", "");
-
+//        console.log(name);
+        name = name.replace(/#/g, ""); // FIXME: ES2021 gives replaceAll
+        
         if (name.length >= minLength && name.length <= maxLength && name.startsWith(startsWith) && name.endsWith(endsWith) && (includes.length == 0 || name.includes(includes)) && (excludes.length == 0 || !name.includes(excludes))) {
             return name;
         }
@@ -78,3 +79,5 @@ class NameGenerator {
 
 
 }
+
+export { NameGenerator }
