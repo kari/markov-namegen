@@ -42,7 +42,7 @@ class Generator {
      * @param   prior   The dirichlet prior/additive smoothing "randomness" factor.
      * @param   backoff Whether to fall back to lower order models when the highest order model fails to generate a letter.
      */
-    constructor(data: string[], order:number, prior:number, backoff:boolean) {
+    constructor(data: string[], order: number, prior: number, backoff: boolean) {
         // FIXME: assertions
 
         this.order = order;
@@ -55,8 +55,8 @@ class Generator {
                 letters.add(letter);
             }
         }
-        
-        const domain = [...letters].sort(function(a:string, b:string) {
+
+        const domain = [...letters].sort(function (a: string, b: string) {
             if (a < b) {
                 return -1;
             }
@@ -76,6 +76,46 @@ class Generator {
             models.push(new Model(data, order, prior, domain));
         }
 
+    }
+
+    /**
+    * Generates a word.
+    * @return The generated word.
+    */
+    generate(): string {
+        let word = "#".repeat(this.order);
+
+        let letter = this.getLetter(word);
+        while (letter != "#" && letter != null) {
+            if (letter != null) {
+                word += letter;
+            }
+            letter = this.getLetter(word);
+        }
+
+        return word;
+    }
+
+    /**
+     * Generates the next letter in a word.
+     * @param   word The context the models will use for generating the next letter.
+     * @return  The generated letter, or null if no model could generate one.
+     */
+    getLetter(word: string): string | null {
+        // FIXME: assertions
+
+        let letter: string | null = null;
+        let context = word.substring(word.length - this.order, word.length);
+        for (const model of this.models) {
+            letter = model.generate(context);
+            if (letter == null || letter == "#") {
+                context = context.substring(1)
+            } else {
+                break;
+            }
+        }
+
+        return letter;
     }
 }
 

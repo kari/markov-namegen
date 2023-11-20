@@ -2,9 +2,9 @@
  * A Markov model built using string training data.
  */
 class Model {
-     /**
-     * The order of the model i.e. how many characters this model looks back.
-     */
+    /**
+    * The order of the model i.e. how many characters this model looks back.
+    */
     private _order: number;
     /**
      * Dirichlet prior, like additive smoothing, increases the probability of any item being picked.
@@ -17,11 +17,11 @@ class Model {
     /**
      * The observations.
      */
-    private _observations;
+    private _observations: Map<string, string[]>;
     /**
      * The Markov chains.
      */
-    private _chains;
+    private _chains: Map<string, number[]>;
 
     /**
      * Creates a new Markov model.
@@ -30,16 +30,114 @@ class Model {
      * @param   prior   The dirichlet prior, an additive smoothing "randomness" factor. Must be in the range 0 to 1.
      * @param   alphabet    The alphabet of the training data i.e. the set of unique symbols used in the training data.
      */
-    constructor(data: string[], order:number, prior:number, alphabet: string[]) {
+    constructor(data: string[], order: number, prior: number, alphabet: string[]) {
         // FIXME: assertions
 
         this._order = order;
         this._prior = prior;
         this._alphabet = alphabet;
 
-        
+        this._observations = new Map<string, string[]>();
+        this.train(data);
+        this.buildChains();
     }
 
+    /**
+     * Attempts to generate the next letter in the word given the context (the previous "order" letters).
+     * @param   context The previous "order" letters in the word.
+     */
+    generate(context: string): string | null {
+        // FIXME: assertion
+        const chain = this._chains.get(context);
+        if (chain == null) {
+            return null;
+        } else {
+            // FIXME: assertion
+            return this._alphabet[this.selectIndex(chain)]
+        }
+    }
+
+    /**
+     * Retrains the model on the newly supplied data, regenerating the Markov chains.
+     * @param   data    The new training data.
+     */
+    retrain(data: string[]) {
+        // FIXME: assertion
+        this.train(data);
+        this.buildChains();
+    }
+
+    /**
+     * Trains the model on the given training data.
+     * @param   data    The training data.
+     */
+    train(data: string[]) {
+        while (data.length != 0) {
+            let d = data.pop();
+            d = ("#".repeat(this._order)) + d + "#";
+            for (let i = 0; i <= (d.length - this._order); i++) {
+                const key = d.substring(i, i + this._order);
+                let value = this._observations.get(key);
+                if (value == null) {
+                    value = new Array<string>();
+                    this._observations.set(key, value);
+                }
+                value.push(d.charAt(i + this._order));
+            }
+        }
+    }
+
+    /**
+     * Builds the Markov chains for the model.
+     */
+    buildChains() {
+        const chains = new Map<string, number[]>();
+
+        for (let context in this._observations.keys()) {
+            for (let prediction in this._alphabet) {
+                let value = chains.get(context);
+                if (value == null) {
+                    value = new Array<number>();
+                    chains.set(context, value);
+                }
+                value.push(this._prior + this.countMatches(this._observations.get(context), prediction));
+            }
+        }
+    }
+
+    private countMatches(arr: string[] | undefined, v: string): number {
+        if (arr == undefined) {
+            return 0;
+        }
+
+        let i = 0;
+        for (const s of arr) {
+            if (s == v) {
+                i++;
+            }
+        }
+
+        return i;
+    }
+
+    private selectIndex(chain: number[]): number {
+        let totals = new Array<number>();
+        let accumulator = 0;
+
+        for (let weight of chain) {
+            accumulator += weight;
+            totals.push(accumulator);
+        }
+
+        const rand = Math.random() * accumulator;
+        for (let i = 0; i <= totals.length; i++) {
+            if (rand > totals[i]) {
+                return i;
+            }
+        }
+
+        return 0;
+    }
 
 }
 
