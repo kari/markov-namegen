@@ -71,7 +71,7 @@ class Model {
      * Trains the model on the given training data.
      * @param   data    The training data.
      */
-    train(data: string[]) {
+    private train(data: string[]) {
         while (data.length != 0) {
             let d = data.pop();
             d = ("#".repeat(this._order)) + d + "#";
@@ -90,7 +90,7 @@ class Model {
     /**
      * Builds the Markov chains for the model.
      */
-    buildChains() {
+    private buildChains() {
         const chains = new Map<string, number[]>();
 
         for (let context in this._observations.keys()) {

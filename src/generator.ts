@@ -19,21 +19,21 @@ class Generator {
      * Generators own models of order 1 through order "n".
      * Generators of order "n" look back up to "n" characters when choosing the next character.
      */
-    order: number;
+    public order: number;
     /**
      * Dirichlet prior, acts as an additive smoothing factor.
      *
      * The prior adds a constant probability that a random letter is picked from the alphabet when generating a new letter.
      */
-    prior: number;
+    public prior: number;
     /**
      * Whether to fall back to lower orders of models when a higher-order model fails to generate a letter.
      */
-    backoff: boolean;
+    private _backoff: boolean;
     /**
      * The array of Markov models used by this generator, starting from highest order to lowest order.
      */
-    models: Model[];
+    private _models: Model[];
 
     /**
      * Creates a new procedural word Generator.
@@ -47,7 +47,7 @@ class Generator {
 
         this.order = order;
         this.prior = prior;
-        this.backoff = backoff;
+        this._backoff = backoff;
 
         const letters = new Set<string>();
         for (const word in data) {
@@ -68,7 +68,7 @@ class Generator {
         domain.unshift("#");
 
         const models: Model[] = [];
-        if (this.backoff) {
+        if (this._backoff) {
             for (let i = 0; i <= order; i++) {
                 models.push(new Model(data, order - i, prior, domain)); // from highest to lowest order
             }
@@ -101,12 +101,12 @@ class Generator {
      * @param   word The context the models will use for generating the next letter.
      * @return  The generated letter, or null if no model could generate one.
      */
-    getLetter(word: string): string | null {
+    private getLetter(word: string): string | null {
         // FIXME: assertions
 
         let letter: string | null = null;
         let context = word.substring(word.length - this.order, word.length);
-        for (const model of this.models) {
+        for (const model of this._models) {
             letter = model.generate(context);
             if (letter == null || letter == "#") {
                 context = context.substring(1)

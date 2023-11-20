@@ -46,5 +46,35 @@ class NameGenerator {
         return null;
     }
 
+    /**
+     * Attempts to generate "n" names that meet the given constraints within an alotted time.
+     * @param   n   The number of names to generate.
+     * @param   minLength   The minimum length of the word.
+     * @param   maxLength   The maximum length of the word.
+     * @param   startsWith  The text the word must start with.
+     * @param   endsWith    The text the word must end with.
+     * @param   includes    The text the word must include.
+     * @param   excludes    The text the word must exclude.
+     * @param   maxTimePerName  The maximum time in milliseconds to spend generating each name.
+     * @return  A word that meets the specified constraints, or null if no word that met the constraints was generated in the time alotted.
+     */
+    generateNames(n: number, minLength: number, maxLength: number, startsWith: string, endsWith: string, includes: string, excludes: string, maxTimePerName: number = 200): string[] {
+        const names = new Array<string>();
+
+        const startTime = performance.now();
+        let currentTime = performance.now();
+
+        while (names.length < n && currentTime > startTime + (maxTimePerName * n)) {
+            const name = this.generateName(minLength, maxLength, startsWith, endsWith, includes, excludes);
+            if (name != null) {
+                names.push(name);
+            }
+
+            currentTime = performance.now();
+        }
+
+        return names;
+    }
+
 
 }
