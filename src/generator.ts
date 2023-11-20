@@ -78,3 +78,5 @@ class Generator {
 
     }
 }
+
+export { Generator }
