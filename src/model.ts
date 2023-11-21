@@ -1,3 +1,5 @@
+import { assert } from "./assert";
+
 /**
  * A Markov model built using string training data.
  */
@@ -31,7 +33,8 @@ class Model {
      * @param   alphabet    The alphabet of the training data i.e. the set of unique symbols used in the training data.
      */
     constructor(data: string[], order: number, prior: number, alphabet: string[]) {
-        // FIXME: assertions
+        assert(alphabet.length > 0 && data.length > 0);
+        assert(prior >= 0 && prior <= 1);
 
         this._order = order;
         this._prior = prior;
@@ -41,8 +44,6 @@ class Model {
         this.train(data);
         this.buildChains();
 
-//        console.log(this._observations);
-//        console.log(this._chains);
     }
 
     /**
@@ -50,12 +51,11 @@ class Model {
      * @param   context The previous "order" letters in the word.
      */
     generate(context: string): string | null {
-        // FIXME: assertion
         const chain = this._chains.get(context);
         if (chain == null) {
             return null;
         } else {
-            // FIXME: assertion
+            assert(chain.length > 0);
             return this._alphabet[this.selectIndex(chain)]
         }
     }
@@ -65,7 +65,6 @@ class Model {
      * @param   data    The new training data.
      */
     retrain(data: string[]) {
-        // FIXME: assertion
         this.train(data);
         this.buildChains();
     }
@@ -80,7 +79,6 @@ class Model {
             d = ("#".repeat(this._order)) + d + "#";
             for (let i = 0; i <= (d.length - this._order); i++) {
                 const key = d.substring(i, i + this._order);
-//                console.log(key)
                 let value = this._observations.get(key);
                 if (value == null) {
                     value = new Array<string>();
@@ -88,7 +86,6 @@ class Model {
                 }
                 value.push(d.charAt(i + this._order));
 
-//                console.log(d.charAt(i + this._order));
             }
         }
     }
@@ -108,7 +105,6 @@ class Model {
                 }
                 value.push(this._prior + this.countMatches(this._observations.get(context), prediction));
 
-//                console.log(context + " " + prediction + " -> " + (this.countMatches(this._observations.get(context), prediction)));
             }
         }
     }

@@ -1,3 +1,4 @@
+import { assert } from "./assert";
 import { Model } from "./model";
 
 /**
@@ -43,7 +44,8 @@ class Generator {
      * @param   backoff Whether to fall back to lower order models when the highest order model fails to generate a letter.
      */
     constructor(data: string[], order: number, prior: number, backoff: boolean) {
-        // FIXME: assertions
+        assert(order >= 1);
+        assert(prior >= 0);
 
         this.order = order;
         this.prior = prior;
@@ -75,8 +77,6 @@ class Generator {
         } else {
             this._models.push(new Model(data, order, prior, domain));
         }
-//        console.log(this._models);
-
     }
 
     /**
@@ -103,7 +103,7 @@ class Generator {
      * @return  The generated letter, or null if no model could generate one.
      */
     private getLetter(word: string): string | null {
-        // FIXME: assertions
+        assert(word.length > 0);
 
         let letter: string | null = null;
         let context = word.substring(word.length - this.order, word.length);
