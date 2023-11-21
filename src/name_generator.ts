@@ -65,7 +65,7 @@ class NameGenerator {
         const startTime = performance.now();
         let currentTime = performance.now();
 
-        while (names.length < n && currentTime > startTime + (maxTimePerName * n)) {
+        while (names.length < n && currentTime < startTime + (maxTimePerName * n)) {
             const name = this.generateName(minLength, maxLength, startsWith, endsWith, includes, excludes);
             if (name != null) {
                 names.push(name);
