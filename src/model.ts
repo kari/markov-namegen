@@ -32,18 +32,29 @@ class Model {
      * @param   prior   The dirichlet prior, an additive smoothing "randomness" factor. Must be in the range 0 to 1.
      * @param   alphabet    The alphabet of the training data i.e. the set of unique symbols used in the training data.
      */
-    constructor(data: string[], order: number, prior: number, alphabet: string[]) {
-        assert(alphabet.length > 0 && data.length > 0);
+    constructor(order: number, prior: number, alphabet: string[], data: string[])
+    constructor(order: number, prior: number, alphabet: string[],observations: Map<string, string[]>, chains: Map<string, number[]>, )
+    constructor(order: number, prior: number, alphabet: string[], dataOrObservations: string[] | Map<string, string[]>, chains?: Map<string, number[]>)
+    {
         assert(prior >= 0 && prior <= 1);
 
         this._order = order;
         this._prior = prior;
         this._alphabet = alphabet;
 
-        this._observations = new Map<string, string[]>();
-        this.train(data);
-        this.buildChains();
+        if (Array.isArray(dataOrObservations)) {
+            const data = dataOrObservations;
+            assert(alphabet.length > 0 && data.length > 0);
 
+            this._observations = new Map<string, string[]>();
+            this.train(data);
+            this.buildChains();
+  
+        } else {
+            this._observations = dataOrObservations;
+            this._chains = chains!;
+        }
+        
     }
 
     /**
@@ -142,6 +153,27 @@ class Model {
 
         return 0;
     }
+
+    private toObject() {
+        return {
+            order: this._order,
+            prior: this._prior,
+            alphabet: this._alphabet,
+            observations: this._observations,
+            chains: this._chains
+        }
+    }
+
+    toJSON() {
+        return JSON.stringify(this.toObject())
+    }
+
+    static fromJSON(json: string) {
+        const model: ReturnType<Model["toObject"]> = JSON.parse(json)
+
+        return new Model(model.order, model.prior, model.alphabet, model.observations, model.chains)
+    }
+
 
 }
 
