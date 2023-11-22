@@ -31,15 +31,16 @@ class NameGenerator {
      * @param   endsWith    The text the word must end with.
      * @param   includes    The text the word must include.
      * @param   excludes    The text the word must exclude.
+     * @param   regexMatch  The regular expression the word must match.
      * @return  A word that meets the specified constraints, or null if the generated word did not meet the constraints.
      */
-    generateName(minLength: number, maxLength: number, startsWith: string, endsWith: string, includes: string, excludes: string): string | null {
+    generateName(minLength: number, maxLength: number, startsWith: string, endsWith: string, includes: string, excludes: string, regexMatch: RegExp | null = null): string | null {
         let name: string;
 
         name = this._generator.generate();
         name = name.replaceAll("#", "");
         
-        if (name.length >= minLength && name.length <= maxLength && name.startsWith(startsWith) && name.endsWith(endsWith) && (includes.length == 0 || name.includes(includes)) && (excludes.length == 0 || !name.includes(excludes))) {
+        if (name.length >= minLength && name.length <= maxLength && name.startsWith(startsWith) && name.endsWith(endsWith) && (includes.length == 0 || name.includes(includes)) && (excludes.length == 0 || !name.includes(excludes)) && (regexMatch == null || name.match(regexMatch))) {
             return name;
         }
 
@@ -56,16 +57,17 @@ class NameGenerator {
      * @param   includes    The text the word must include.
      * @param   excludes    The text the word must exclude.
      * @param   maxTimePerName  The maximum time in milliseconds to spend generating each name.
+     * @param   regexMatch  The regular expression the word must match.
      * @return  A word that meets the specified constraints, or null if no word that met the constraints was generated in the time alotted.
      */
-    generateNames(n: number, minLength: number, maxLength: number, startsWith: string, endsWith: string, includes: string, excludes: string, maxTimePerName: number = 200): string[] {
+    generateNames(n: number, minLength: number, maxLength: number, startsWith: string, endsWith: string, includes: string, excludes: string, maxTimePerName: number = 200, regexMatch: RegExp | null = null): string[] {
         const names = new Array<string>();
 
         const startTime = performance.now();
         let currentTime = performance.now();
 
         while (names.length < n && currentTime < startTime + (maxTimePerName * n)) {
-            const name = this.generateName(minLength, maxLength, startsWith, endsWith, includes, excludes);
+            const name = this.generateName(minLength, maxLength, startsWith, endsWith, includes, excludes, regexMatch);
             if (name != null) {
                 names.push(name);
             }
