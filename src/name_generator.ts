@@ -37,7 +37,7 @@ class NameGenerator {
         let name: string;
 
         name = this._generator.generate();
-        name = name.replace(/#/g, ""); // FIXME: ES2021 gives replaceAll
+        name = name.replaceAll("#", "");
         
         if (name.length >= minLength && name.length <= maxLength && name.startsWith(startsWith) && name.endsWith(endsWith) && (includes.length == 0 || name.includes(includes)) && (excludes.length == 0 || !name.includes(excludes))) {
             return name;
