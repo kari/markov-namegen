@@ -7,11 +7,11 @@ class Model {
     /**
     * The order of the model i.e. how many characters this model looks back.
     */
-    private _order: number;
+    readonly order: number;
     /**
      * Dirichlet prior, like additive smoothing, increases the probability of any item being picked.
      */
-    private _prior: number;
+    readonly prior: number;
     /**
      * The alphabet of the training data.
      */
@@ -37,8 +37,8 @@ class Model {
     constructor(order: number, prior: number, alphabet: string[], dataOrObservations: string[] | Map<string, string[]>, chains?: Map<string, number[]>) {
         assert(prior >= 0 && prior <= 1);
 
-        this._order = order;
-        this._prior = prior;
+        this.order = order;
+        this.prior = prior;
         this._alphabet = alphabet;
 
         if (Array.isArray(dataOrObservations)) {
@@ -66,7 +66,7 @@ class Model {
             return null;
         } else {
             assert(chain.length > 0);
-            return this._alphabet[this.selectIndex(chain)]
+            return this._alphabet[Model.selectIndex(chain)]
         }
     }
 
@@ -75,6 +75,7 @@ class Model {
      * @param   data    The new training data.
      */
     retrain(data: string[]) {
+        // FIXME: doesn't update alphabet
         this.train(data);
         this.buildChains();
     }
@@ -86,15 +87,15 @@ class Model {
     private train(data: string[]) {
         while (data.length != 0) {
             let d = data.pop();
-            d = ("#".repeat(this._order)) + d + "#";
-            for (let i = 0; i <= (d.length - this._order); i++) {
-                const key = d.substring(i, i + this._order);
+            d = ("#".repeat(this.order)) + d + "#";
+            for (let i = 0; i <= (d.length - this.order); i++) {
+                const key = d.substring(i, i + this.order);
                 let value = this._observations.get(key);
                 if (value == null) {
                     value = new Array<string>();
                     this._observations.set(key, value);
                 }
-                value.push(d.charAt(i + this._order));
+                value.push(d.charAt(i + this.order));
 
             }
         }
@@ -113,13 +114,13 @@ class Model {
                     value = new Array<number>();
                     this._chains.set(context, value);
                 }
-                value.push(this._prior + this.countMatches(this._observations.get(context), prediction));
+                value.push(this.prior + Model.countMatches(this._observations.get(context), prediction));
 
             }
         }
     }
 
-    private countMatches(arr: string[] | undefined, v: string): number {
+    private static countMatches(arr: string[] | undefined, v: string): number {
         if (arr == undefined) {
             return 0;
         }
@@ -134,7 +135,7 @@ class Model {
         return i;
     }
 
-    private selectIndex(chain: number[]): number {
+    private static selectIndex(chain: number[]): number {
         let totals = new Array<number>();
         let accumulator = 0;
 
@@ -155,8 +156,8 @@ class Model {
 
     private toObject() {
         return {
-            order: this._order,
-            prior: this._prior,
+            order: this.order,
+            prior: this.prior,
             alphabet: this._alphabet,
             observations: this._observations,
             chains: this._chains

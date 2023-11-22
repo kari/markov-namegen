@@ -43,39 +43,58 @@ class Generator {
      * @param   prior   The dirichlet prior/additive smoothing "randomness" factor.
      * @param   backoff Whether to fall back to lower order models when the highest order model fails to generate a letter.
      */
-    constructor(data: string[], order: number, prior: number, backoff: boolean) {
-        assert(order >= 1);
-        assert(prior >= 0);
+    constructor(models: string[] | string)
+    constructor(data: string[], order: number, prior: number, backoff: boolean)
+    constructor(dataOrModels: string[], order?: number, prior?: number, backoff?: boolean) {
+        if (order != undefined && prior != undefined && backoff != undefined) {
+            const data = dataOrModels;
+            assert(order >= 1);
+            assert(prior >= 0);
 
-        this.order = order;
-        this.prior = prior;
-        this._backoff = backoff;
+            this.order = order;
+            this.prior = prior;
+            this._backoff = backoff;
 
-        const letters = new Set<string>();
-        for (const word of data) {
-            for (const letter of word) {
-                letters.add(letter);
+            const letters = new Set<string>();
+            for (const word of data) {
+                for (const letter of word) {
+                    letters.add(letter);
+                }
             }
-        }
 
-        const domain = [...letters].sort(function (a: string, b: string) {
-            if (a < b) {
-                return -1;
-            }
-            if (a > b) {
-                return 1;
-            }
-            return 0;
-        });
-        domain.unshift("#");
+            const domain = [...letters].sort(function (a: string, b: string) {
+                if (a < b) {
+                    return -1;
+                }
+                if (a > b) {
+                    return 1;
+                }
+                return 0;
+            });
+            domain.unshift("#");
 
-        this._models = [];
-        if (this._backoff) {
-            for (let i = 0; i <= order; i++) {
-                this._models.push(new Model(order - i, prior, domain, data)); // from highest to lowest order
+            this._models = [];
+            if (this._backoff) {
+                for (let i = 0; i <= order; i++) {
+                    this._models.push(new Model(order - i, prior, domain, data)); // from highest to lowest order
+                }
+            } else {
+                this._models.push(new Model(order, prior, domain, data));
             }
         } else {
-            this._models.push(new Model(order, prior, domain, data));
+            if (typeof dataOrModels == "string") {
+                dataOrModels = [dataOrModels]
+            }
+            this._models = dataOrModels.map(m => Model.fromJSON(m));
+            this.prior = this._models[0].prior
+            if (this._models.length > 1) {
+                this._backoff = true
+                this.order = this._models.length
+
+            } else {
+                this._backoff = false
+                this.order = this._models[0].order
+            }
         }
     }
 

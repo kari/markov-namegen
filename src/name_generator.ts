@@ -18,8 +18,14 @@ class NameGenerator {
      * @param   prior   The dirichlet prior/additive smoothing "randomness" factor.
      * @param   backoff Whether to fall back to lower order models when the highest order model fails to generate a letter (defaults to false).
      */
-    constructor(data: string[], order: number, prior: number, backoff: boolean = false) {
-        this._generator = new Generator(data, order, prior, backoff);
+    constructor(models: string[] | string)
+    constructor(data: string[], order: number, prior: number, backoff?: boolean)
+    constructor(dataOrModels: string[], order?: number, prior?: number, backoff?: boolean) {
+        if (order != undefined && prior != undefined && backoff != undefined) {
+            this._generator = new Generator(dataOrModels, order, prior, backoff);
+        } else {
+            this._generator = new Generator(dataOrModels)
+        }
     }
 
     /**
