@@ -33,9 +33,8 @@ class Model {
      * @param   alphabet    The alphabet of the training data i.e. the set of unique symbols used in the training data.
      */
     constructor(order: number, prior: number, alphabet: string[], data: string[])
-    constructor(order: number, prior: number, alphabet: string[],observations: Map<string, string[]>, chains: Map<string, number[]>, )
-    constructor(order: number, prior: number, alphabet: string[], dataOrObservations: string[] | Map<string, string[]>, chains?: Map<string, number[]>)
-    {
+    constructor(order: number, prior: number, alphabet: string[], observations: Map<string, string[]>, chains: Map<string, number[]>,)
+    constructor(order: number, prior: number, alphabet: string[], dataOrObservations: string[] | Map<string, string[]>, chains?: Map<string, number[]>) {
         assert(prior >= 0 && prior <= 1);
 
         this._order = order;
@@ -49,12 +48,12 @@ class Model {
             this._observations = new Map<string, string[]>();
             this.train(data);
             this.buildChains();
-  
+
         } else {
             this._observations = dataOrObservations;
             this._chains = chains!;
         }
-        
+
     }
 
     /**
@@ -165,13 +164,33 @@ class Model {
     }
 
     toJSON() {
-        return JSON.stringify(this.toObject())
+        return JSON.stringify(this.toObject(), Model.replacer)
     }
 
     static fromJSON(json: string) {
-        const model: ReturnType<Model["toObject"]> = JSON.parse(json)
+        const model: ReturnType<Model["toObject"]> = JSON.parse(json, Model.reviver)
 
         return new Model(model.order, model.prior, model.alphabet, model.observations, model.chains)
+    }
+
+    private static replacer(_key: string, value: any) {
+        if (value instanceof Map) {
+            return {
+                dataType: 'Map',
+                value: Array.from(value.entries()), // or with spread: value: [...value]
+            };
+        } else {
+            return value;
+        }
+    }
+
+    private static reviver(_key: string, value: any) {
+        if (typeof value === 'object' && value !== null) {
+            if (value.dataType === 'Map') {
+                return new Map(value.value);
+            }
+        }
+        return value;
     }
 
 
