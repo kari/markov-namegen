@@ -72,7 +72,7 @@ class Generator {
         this._models = [];
         if (this._backoff) {
             for (let i = 0; i <= order; i++) {
-                this._models.push(new Model(data, order - i, prior, domain)); // from highest to lowest order
+                this._models.push(new Model([...data], order - i, prior, domain)); // from highest to lowest order
             }
         } else {
             this._models.push(new Model(data, order, prior, domain));
