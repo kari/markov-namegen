@@ -15,11 +15,11 @@ class Model {
     /**
      * The alphabet of the training data.
      */
-    private _alphabet: string[];
+    private readonly _alphabet: string[];
     /**
      * The observations.
      */
-    private _observations: Map<string, string[]>;
+    private _observations?: Map<string, string[]>;
     /**
      * The Markov chains.
      */
@@ -33,25 +33,23 @@ class Model {
      * @param   alphabet    The alphabet of the training data i.e. the set of unique symbols used in the training data.
      */
     constructor(order: number, prior: number, alphabet: string[], data: string[])
-    constructor(order: number, prior: number, alphabet: string[], observations: Map<string, string[]>, chains: Map<string, number[]>,)
-    constructor(order: number, prior: number, alphabet: string[], dataOrObservations: string[] | Map<string, string[]>, chains?: Map<string, number[]>) {
+    constructor(order: number, prior: number, alphabet: string[], chains: Map<string, number[]>,)
+    constructor(order: number, prior: number, alphabet: string[], dataOrChains: string[] | Map<string, number[]>) {
         assert(prior >= 0 && prior <= 1);
 
         this.order = order;
         this.prior = prior;
         this._alphabet = alphabet;
 
-        if (Array.isArray(dataOrObservations)) {
-            const data = dataOrObservations;
+        if (Array.isArray(dataOrChains)) {
+            const data = dataOrChains;
             assert(alphabet.length > 0 && data.length > 0);
 
-            this._observations = new Map<string, string[]>();
             this.train(data);
             this.buildChains();
 
         } else {
-            this._observations = dataOrObservations;
-            this._chains = chains!;
+            this._chains = dataOrChains!;
         }
 
     }
@@ -71,20 +69,12 @@ class Model {
     }
 
     /**
-     * Retrains the model on the newly supplied data, regenerating the Markov chains.
-     * @param   data    The new training data.
-     */
-    retrain(data: string[]) {
-        // FIXME: doesn't update alphabet
-        this.train(data);
-        this.buildChains();
-    }
-
-    /**
      * Trains the model on the given training data.
      * @param   data    The training data.
      */
     private train(data: string[]) {
+        this._observations = new Map<string, string[]>();
+
         while (data.length != 0) {
             let d = data.pop();
             d = ("#".repeat(this.order)) + d + "#";
@@ -105,6 +95,7 @@ class Model {
      * Builds the Markov chains for the model.
      */
     private buildChains() {
+        assert(this._observations != null)
         this._chains = new Map<string, number[]>();
 
         for (let context of this._observations.keys()) {
@@ -159,7 +150,6 @@ class Model {
             order: this.order,
             prior: this.prior,
             alphabet: this._alphabet,
-            observations: this._observations,
             chains: this._chains
         }
     }
@@ -171,14 +161,14 @@ class Model {
     static fromJSON(json: string) {
         const model: ReturnType<Model["toObject"]> = JSON.parse(json, Model.reviver)
 
-        return new Model(model.order, model.prior, model.alphabet, model.observations, model.chains)
+        return new Model(model.order, model.prior, model.alphabet, model.chains)
     }
 
     private static replacer(_key: string, value: any) {
         if (value instanceof Map) {
             return {
                 dataType: 'Map',
-                value: Array.from(value.entries()), // or with spread: value: [...value]
+                value: Array.from(value.entries())
             };
         } else {
             return value;
