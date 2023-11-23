@@ -1,5 +1,22 @@
 {
-  "name": "markov-namegen",
+  "name": "@ksilvennoinen/markov-namegen",
+  "version": "1.0.0",
+  "main": "src/name_generator.ts",
+  "description": "Markov chain based name generator in TypeScript",
+  "keywords": [
+    "markov-chain",
+    "procedural",
+    "name-generator",
+    "namegen",
+    "random"
+  ],
+  "author": "Kari Silvennoinen",
+  "license": "MIT",
+  "homepage": "https://github.com/kari/markov-namegen",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kari/markov-namegen.git"
+  },
   "devDependencies": {
     "typescript": "^5.3.2"
   }
