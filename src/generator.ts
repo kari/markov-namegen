@@ -4,11 +4,12 @@ import { Model } from "./model";
 /**
  * A procedural word generator that uses Markov chains built from a user-provided array of words.
  *
- * This uses Katz's back-off model, which is an approach that uses high-order models. It looks for the next letter based on the last "n" letters, backing down to lower order models when higher models fail.
+ * This uses a simplified version of Katz's back-off model, which is an approach that uses high-order models. It looks for the next letter based on the last "n" letters, backing down to lower order models when higher models fail.
  *
  * This also uses a Dirichlet prior, which acts as an additive smoothing factor, introducing a chance for random letters to be be picked.
  *
  * @see http://www.samcodes.co.uk/project/markov-namegen/
+ * @see https://www.roguebasin.com/index.php?title=Names_from_a_high_order_Markov_Process_and_a_simplified_Katz_back-off_scheme#Katz_Back-off
  * @see https://en.wikipedia.org/wiki/Katz%27s_back-off_model
  * @see https://en.wikipedia.org/wiki/Additive_smoothing
  */

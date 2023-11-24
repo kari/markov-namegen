@@ -6,7 +6,7 @@ This is a TypeScript port of [markov-namegen-lib](https://github.com/Tw1ddle/mar
 
 Offers most of the features available in the reference Haxe implementation
 
-- [Katz backoff](https://en.wikipedia.org/wiki/Katz%27s_back-off_model) using high order models - look up to "n" characters back.
+- A simplified [Katz back-off](https://en.wikipedia.org/wiki/Katz%27s_back-off_model) using high order models - look up to "n" characters back.
 - Sort and filter generated strings by length, start, end, and content.
 - [Dirichlet prior](https://en.wikipedia.org/wiki/Dirichlet_distribution#Special_cases) parameter.
 
