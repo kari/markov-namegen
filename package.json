@@ -1,7 +1,7 @@
 {
   "name": "@ksilvennoinen/markov-namegen",
   "version": "1.0.2",
-  "main": "dist/index.ts",
+  "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "description": "Markov chain based name generator in TypeScript",
   "keywords": [
