@@ -1,6 +1,6 @@
 {
   "name": "@ksilvennoinen/markov-namegen",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "src/name_generator.ts",
   "description": "Markov chain based name generator in TypeScript",
   "keywords": [

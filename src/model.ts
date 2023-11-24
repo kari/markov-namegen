@@ -52,7 +52,7 @@ class Model {
      */
     generate(context: string): string | null {
         const chain = this._chains.get(context);
-        if (chain == null) {
+        if (chain == undefined) {
             return null;
         } else {
             assert(chain.length > 0);

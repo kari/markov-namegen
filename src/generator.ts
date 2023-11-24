@@ -71,7 +71,7 @@ class Generator {
 
         this._models = [];
         if (this._backoff) {
-            for (let i = 0; i <= order; i++) {
+            for (let i = 0; i < order; i++) {
                 this._models.push(new Model([...data], order - i, prior, domain)); // from highest to lowest order
             }
         } else {
@@ -109,7 +109,7 @@ class Generator {
         let context = word.substring(word.length - this.order, word.length);
         for (const model of this._models) {
             letter = model.generate(context);
-            if (letter == null || letter == "#") {
+            if (letter == null) {
                 context = context.substring(1)
             } else {
                 break;
