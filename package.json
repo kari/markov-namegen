@@ -24,5 +24,8 @@
   "scripts": {
     "clean": "npx rimraf dist",
     "build": "tsc"
-  }
+  },
+  "files": [
+    "dist/"
+  ]
 }
