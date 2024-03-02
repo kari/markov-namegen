@@ -59,7 +59,7 @@ class Generator {
             }
         }
 
-        const domain = [...letters].sort(function (a: string, b: string) {
+        const domain = [...letters].sort((a: string, b: string) => {
             if (a < b) {
                 return -1;
             }
@@ -88,7 +88,7 @@ class Generator {
         let word = "#".repeat(this.order);
         let letter = this.getLetter(word);
 
-        while (letter != "#" && letter != null) {
+        while (letter !== "#" && letter != null) {
             if (letter != null) {
                 word += letter;
             }

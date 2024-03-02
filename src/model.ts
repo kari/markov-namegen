@@ -52,12 +52,11 @@ class Model {
      */
     generate(context: string): string | null {
         const chain = this._chains.get(context);
-        if (chain == undefined) {
+        if (chain === undefined) {
             return null;
-        } else {
-            assert(chain.length > 0);
-            return this._alphabet[this.selectIndex(chain)]
         }
+        assert(chain.length > 0);
+        return this._alphabet[this.selectIndex(chain)]
     }
 
     /**
@@ -74,9 +73,9 @@ class Model {
      * @param   data    The training data.
      */
     private train(data: string[]) {
-        while (data.length != 0) {
+        while (data.length !== 0) {
             let d = data.pop();
-            d = ("#".repeat(this._order)) + d + "#";
+            d = `${"#".repeat(this._order)}${d}#`;
             for (let i = 0; i <= (d.length - this._order); i++) {
                 const key = d.substring(i, i + this._order);
                 let value = this._observations.get(key);
@@ -96,8 +95,8 @@ class Model {
     private buildChains() {
         this._chains = new Map<string, number[]>();
 
-        for (let context of this._observations.keys()) {
-            for (let prediction of this._alphabet) {
+        for (const context of this._observations.keys()) {
+            for (const prediction of this._alphabet) {
                 let value = this._chains.get(context);
                 if (value == null) {
                     value = new Array<number>();
@@ -110,13 +109,13 @@ class Model {
     }
 
     private countMatches(arr: string[] | undefined, v: string): number {
-        if (arr == undefined) {
+        if (arr === undefined) {
             return 0;
         }
 
         let i = 0;
         for (const s of arr) {
-            if (s == v) {
+            if (s === v) {
                 i++;
             }
         }
@@ -125,10 +124,10 @@ class Model {
     }
 
     private selectIndex(chain: number[]): number {
-        let totals = new Array<number>();
+        const totals = new Array<number>();
         let accumulator = 0;
 
-        for (let weight of chain) {
+        for (const weight of chain) {
             accumulator += weight;
             totals.push(accumulator);
         }

@@ -18,7 +18,7 @@ class NameGenerator {
      * @param   prior   The dirichlet prior/additive smoothing "randomness" factor.
      * @param   backoff Whether to fall back to lower order models when the highest order model fails to generate a letter (defaults to false).
      */
-    constructor(data: string[], order: number, prior: number, backoff: boolean = false) {
+    constructor(data: string[], order: number, prior: number, backoff = false) {
         this._generator = new Generator(data, order, prior, backoff);
     }
 
@@ -40,7 +40,7 @@ class NameGenerator {
         name = this._generator.generate();
         name = name.replaceAll("#", "");
         
-        if (name.length >= minLength && name.length <= maxLength && name.startsWith(startsWith) && name.endsWith(endsWith) && (includes.length == 0 || name.includes(includes)) && (excludes.length == 0 || !name.includes(excludes)) && (regexMatch == null || name.match(regexMatch))) {
+        if (name.length >= minLength && name.length <= maxLength && name.startsWith(startsWith) && name.endsWith(endsWith) && (includes.length === 0 || name.includes(includes)) && (excludes.length === 0 || !name.includes(excludes)) && (regexMatch == null || name.match(regexMatch))) {
             return name;
         }
 
@@ -60,7 +60,7 @@ class NameGenerator {
      * @param   regexMatch  The regular expression the word must match.
      * @return  A word that meets the specified constraints, or null if no word that met the constraints was generated in the time alotted.
      */
-    generateNames(n: number, minLength: number, maxLength: number, startsWith: string, endsWith: string, includes: string, excludes: string, maxTimePerName: number = 200, regexMatch: RegExp | null = null): string[] {
+    generateNames(n: number, minLength: number, maxLength: number, startsWith: string, endsWith: string, includes: string, excludes: string, maxTimePerName = 200, regexMatch: RegExp | null = null): string[] {
         const names = new Array<string>();
 
         const startTime = performance.now();
