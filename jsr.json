@@ -1,0 +1,9 @@
+{
+    "name": "@kari/markov-namegen",
+    "version": "1.0.3",
+    "exports": "./src/index.ts",
+    "include": [
+        "src/*.ts"
+    ],
+    "exclude": ["test/", "package-lock.json"]
+}
