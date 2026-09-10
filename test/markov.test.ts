@@ -29,6 +29,29 @@ test("forwards the random source through NameGenerator", () => {
 	assert.equal(generator.generateName(2, 2, "", "", "", ""), "ab");
 });
 
+test("supports named generation options", () => {
+	const generator = new NameGenerator(["ab"], 2, 0, false, () => 0.999);
+
+	assert.equal(
+		generator.generateName({ minLength: 2, maxLength: 2, startsWith: "a" }),
+		"ab",
+	);
+	assert.deepEqual(
+		generator.generateNames(1, {
+			minLength: 2,
+			maxLength: 2,
+			maxTimePerName: 200,
+		}),
+		["ab"],
+	);
+});
+
+test("counts Unicode code points as name characters", () => {
+	const generator = new NameGenerator(["😀a"], 1, 0, false, () => 0.999);
+
+	assert.equal(generator.generateName(2, 2, "", "", "", ""), "😀a");
+});
+
 test("bounds generation when a model does not produce a terminator", () => {
 	const generator = new Generator(["a"], 1, 1, false, () => 0.75);
 

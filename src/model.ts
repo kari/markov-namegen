@@ -1,4 +1,6 @@
-import { assert } from "./assert";
+import { assert } from "./assert.js";
+import type { TrainingData } from "./training.js";
+import { buildAlphabet, validateTrainingData } from "./training.js";
 
 type RandomSource = () => number;
 
@@ -21,7 +23,7 @@ class Model {
 	/**
 	 * The observations.
 	 */
-	private _observations: Map<string, string[]>;
+	private _observations: Map<string, Map<string, number>>;
 	/**
 	 * The Markov chains.
 	 */
@@ -35,20 +37,13 @@ class Model {
 	 * @param   alphabet    The alphabet of the training data i.e. the set of unique symbols used in the training data.
 	 */
 	constructor(
-		data: readonly string[],
+		data: TrainingData,
 		order: number,
 		prior: number,
 		alphabet: string[],
 		private readonly random: RandomSource = Math.random,
 	) {
-		assert(data.length > 0, "Training data must not be empty");
-		assert(
-			data.every(
-				(word) =>
-					typeof word === "string" && word.length > 0 && !word.includes("#"),
-			),
-			"Training words must be non-empty and must not contain '#'",
-		);
+		validateTrainingData(data);
 		assert(alphabet.length > 0, "Alphabet must not be empty");
 		assert(
 			Number.isInteger(order) && order >= 1,
@@ -63,7 +58,7 @@ class Model {
 		this._prior = prior;
 		this._alphabet = [...alphabet];
 
-		this._observations = new Map<string, string[]>();
+		this._observations = new Map<string, Map<string, number>>();
 		this.train(data);
 		this.buildChains();
 	}
@@ -87,23 +82,10 @@ class Model {
 	 * Retrains the model on the newly supplied data, regenerating the Markov chains.
 	 * @param   data    The new training data.
 	 */
-	retrain(data: readonly string[]) {
-		assert(data.length > 0, "Training data must not be empty");
-		assert(
-			data.every(
-				(word) =>
-					typeof word === "string" && word.length > 0 && !word.includes("#"),
-			),
-			"Training words must be non-empty and must not contain '#'",
-		);
-		const alphabet = new Set<string>();
-		for (const word of data) {
-			for (const letter of word) {
-				alphabet.add(letter);
-			}
-		}
-		this._alphabet = ["#", ...[...alphabet].sort()];
-		this._observations = new Map<string, string[]>();
+	retrain(data: TrainingData) {
+		validateTrainingData(data);
+		this._alphabet = buildAlphabet(data);
+		this._observations = new Map<string, Map<string, number>>();
 		this.train(data);
 		this.buildChains();
 	}
@@ -112,17 +94,23 @@ class Model {
 	 * Trains the model on the given training data.
 	 * @param   data    The training data.
 	 */
-	private train(data: readonly string[]) {
+	private train(data: TrainingData) {
 		for (const word of data) {
-			const d = `${"#".repeat(this._order)}${word}#`;
-			for (let i = 0; i <= d.length - this._order; i++) {
-				const key = d.substring(i, i + this._order);
+			const symbols = [
+				...Array.from({ length: this._order }, () => "#"),
+				...Array.from(word),
+				"#",
+			];
+			for (let i = 0; i <= symbols.length - this._order - 1; i++) {
+				const key = symbols.slice(i, i + this._order).join("");
 				let value = this._observations.get(key);
 				if (value == null) {
-					value = [];
+					value = new Map<string, number>();
 					this._observations.set(key, value);
 				}
-				value.push(d.charAt(i + this._order));
+				const prediction = symbols[i + this._order];
+				assert(prediction !== undefined);
+				value.set(prediction, (value.get(prediction) ?? 0) + 1);
 			}
 		}
 	}
@@ -133,38 +121,30 @@ class Model {
 	private buildChains() {
 		this._chains = new Map<string, number[]>();
 
-		for (const context of this._observations.keys()) {
-			const counts = new Map<string, number>();
-			for (const prediction of this._observations.get(context) ?? []) {
-				counts.set(prediction, (counts.get(prediction) ?? 0) + 1);
-			}
-
+		for (const [context, counts] of this._observations) {
 			const chain: number[] = [];
+			let total = 0;
 			this._chains.set(context, chain);
 			for (const prediction of this._alphabet) {
-				chain.push(this._prior + (counts.get(prediction) ?? 0));
+				total += this._prior + (counts.get(prediction) ?? 0);
+				chain.push(total);
 			}
 		}
 	}
 
 	private selectIndex(chain: number[]): number {
-		const totals: number[] = [];
-		let accumulator = 0;
-
-		for (const weight of chain) {
-			accumulator += weight;
-			totals.push(accumulator);
-		}
+		const total = chain[chain.length - 1];
+		assert(total !== undefined && total > 0);
 
 		const randomValue = this.random();
 		assert(
 			Number.isFinite(randomValue) && randomValue >= 0 && randomValue < 1,
 			"Random source must return a finite number from 0 (inclusive) to 1 (exclusive)",
 		);
-		const rand = randomValue * accumulator;
-		for (let i = 0; i < totals.length; i++) {
-			const total = totals[i];
-			if (total !== undefined && rand < total) {
+		const rand = randomValue * total;
+		for (let i = 0; i < chain.length; i++) {
+			const cumulative = chain[i];
+			if (cumulative !== undefined && rand < cumulative) {
 				return i;
 			}
 		}

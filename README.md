@@ -2,6 +2,8 @@
 
 This is a TypeScript port of [markov-namegen-lib](https://github.com/Tw1ddle/markov-namegen-lib). It is a Markov chain based name or word generator library.
 
+The package provides both native ESM imports and CommonJS `require` support.
+
 ## Features
 
 Offers most of the features available in the reference Haxe implementation
@@ -17,13 +19,26 @@ import { NameGenerator } from "@ksilvennoinen/markov-namegen";
 
 const data = ["lots", "of", "words", "to", "learn", "from"];
 const namegen = new NameGenerator(data, 3, 0, false);
-console.log(namegen.generateName(5, 11, "", "", "", ""));
+console.log(namegen.generateName({ minLength: 5, maxLength: 11 }));
 ```
 
 Pass a fifth constructor argument to control randomness. This is useful for reproducible output and tests.
 
 ```ts
 const reproducible = new NameGenerator(data, 3, 0, false, () => 0.5);
+```
+
+The positional `generateName` and `generateNames` forms remain supported for compatibility. Named options are also available for batch generation:
+
+```ts
+console.log(
+	namegen.generateNames(20, {
+		minLength: 5,
+		maxLength: 11,
+		startsWith: "",
+		maxTimePerName: 200,
+	}),
+);
 ```
 
 or if you want to generate a lot of names in one go

@@ -1,5 +1,12 @@
-import { assert } from "./assert";
-import { Model, type RandomSource } from "./model";
+import { assert } from "./assert.js";
+import { Model, type RandomSource } from "./model.js";
+import type { TrainingData } from "./training.js";
+import {
+	BOUNDARY,
+	buildAlphabet,
+	contextFrom,
+	validateTrainingData,
+} from "./training.js";
 
 /**
  * A procedural word generator that uses Markov chains built from a user-provided array of words.
@@ -45,20 +52,13 @@ class Generator {
 	 * @param   backoff Whether to fall back to lower order models when the highest order model fails to generate a letter.
 	 */
 	constructor(
-		data: readonly string[],
+		data: TrainingData,
 		order: number,
 		prior: number,
 		backoff: boolean,
 		random: RandomSource = Math.random,
 	) {
-		assert(data.length > 0, "Training data must not be empty");
-		assert(
-			data.every(
-				(word) =>
-					typeof word === "string" && word.length > 0 && !word.includes("#"),
-			),
-			"Training words must be non-empty and must not contain '#'",
-		);
+		validateTrainingData(data);
 		assert(
 			Number.isInteger(order) && order >= 1,
 			"Order must be a positive integer",
@@ -72,23 +72,7 @@ class Generator {
 		this.prior = prior;
 		this._backoff = backoff;
 
-		const letters = new Set<string>();
-		for (const word of data) {
-			for (const letter of word) {
-				letters.add(letter);
-			}
-		}
-
-		const domain = [...letters].sort((a: string, b: string) => {
-			if (a < b) {
-				return -1;
-			}
-			if (a > b) {
-				return 1;
-			}
-			return 0;
-		});
-		domain.unshift("#");
+		const domain = buildAlphabet(data);
 
 		this._models = [];
 		if (this._backoff) {
@@ -117,14 +101,16 @@ class Generator {
 			);
 		}
 
-		let word = "#".repeat(this.order);
+		let word = BOUNDARY.repeat(this.order);
+		let generatedLength = 0;
 		let letter = this.getLetter(word);
 
 		while (letter !== "#" && letter != null) {
-			if (maxLength !== undefined && word.length - this.order >= maxLength) {
+			if (maxLength !== undefined && generatedLength >= maxLength) {
 				return null;
 			}
 			word += letter;
+			generatedLength++;
 			letter = this.getLetter(word);
 		}
 
@@ -144,7 +130,7 @@ class Generator {
 		assert(word.length > 0);
 
 		let letter: string | null = null;
-		let context = word.substring(word.length - this.order, word.length);
+		let context = contextFrom(word, this.order);
 		for (const model of this._models) {
 			letter = model.generate(context);
 			if (letter == null) {

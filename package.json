@@ -1,13 +1,14 @@
 {
   "name": "@ksilvennoinen/markov-namegen",
   "version": "1.0.3",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/cjs/index.js",
+  "types": "dist/cjs/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "require": "./dist/index.js",
-      "default": "./dist/index.js"
+      "types": "./dist/cjs/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
+      "default": "./dist/esm/index.js"
     }
   },
   "sideEffects": false,
@@ -33,12 +34,12 @@
     "typescript": "^7.0.2"
   },
   "scripts": {
-    "clean": "node -e \"const fs=require('node:fs'); for (const path of ['dist', '.tsbuildinfo', 'tsconfig.tsbuildinfo']) fs.rmSync(path, { recursive: true, force: true })\"",
-    "build": "tsc -p tsconfig.json",
-    "test": "tsx --test test/*.test.ts",
+    "clean": "node -e \"const fs=require('node:fs'); for (const path of ['dist', '.tsbuildinfo', '.tsbuildinfo.cjs', '.tsbuildinfo.esm', '.tsbuildinfo.test', 'tsconfig.tsbuildinfo']) fs.rmSync(path, { recursive: true, force: true })\"",
+    "build": "npm run clean && tsc -p tsconfig.json && tsc -p tsconfig.esm.json && node scripts/write-esm-package.mjs",
+    "test": "tsc -p tsconfig.test.json --noEmit && tsx --test test/*.test.ts",
     "format": "biome format --write src test",
     "lint": "biome check src test/markov.test.ts",
-    "prepack": "npm run clean && npm run build"
+    "prepack": "npm run build"
   },
   "files": [
     "dist/"

@@ -1,6 +1,6 @@
 node_modules/
 build/
 dist/
-*.tsbuildinfo
+.tsbuildinfo*
 .vscode/
 word_lists/

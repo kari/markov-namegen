@@ -1,6 +1,62 @@
-import { assert } from "./assert";
-import { Generator } from "./generator";
-import type { RandomSource } from "./model";
+import { assert } from "./assert.js";
+import { Generator } from "./generator.js";
+import type { RandomSource } from "./model.js";
+
+interface NameGenerationOptions {
+	minLength: number;
+	maxLength: number;
+	startsWith?: string;
+	endsWith?: string;
+	includes?: string;
+	excludes?: string;
+	regexMatch?: RegExp | null;
+}
+
+interface NameBatchOptions extends NameGenerationOptions {
+	maxTimePerName?: number;
+}
+
+interface ResolvedNameGenerationOptions {
+	minLength: number;
+	maxLength: number;
+	startsWith: string;
+	endsWith: string;
+	includes: string;
+	excludes: string;
+	regexMatch: RegExp | null;
+}
+
+function resolveOptions(
+	optionsOrMinLength: NameGenerationOptions | number,
+	maxLength?: number,
+	startsWith = "",
+	endsWith = "",
+	includes = "",
+	excludes = "",
+	regexMatch: RegExp | null = null,
+): ResolvedNameGenerationOptions {
+	if (typeof optionsOrMinLength === "number") {
+		return {
+			minLength: optionsOrMinLength,
+			maxLength: maxLength as number,
+			startsWith,
+			endsWith,
+			includes,
+			excludes,
+			regexMatch,
+		};
+	}
+
+	return {
+		minLength: optionsOrMinLength.minLength,
+		maxLength: optionsOrMinLength.maxLength,
+		startsWith: optionsOrMinLength.startsWith ?? "",
+		endsWith: optionsOrMinLength.endsWith ?? "",
+		includes: optionsOrMinLength.includes ?? "",
+		excludes: optionsOrMinLength.excludes ?? "",
+		regexMatch: optionsOrMinLength.regexMatch ?? null,
+	};
+}
 
 /**
  * An example name generator that builds upon the Generator class. This should be sufficient for most simple name generation scenarios.
@@ -42,6 +98,7 @@ class NameGenerator {
 	 * @param   regexMatch  The regular expression the word must match.
 	 * @return  A word that meets the specified constraints, or null if the generated word did not meet the constraints.
 	 */
+	generateName(options: NameGenerationOptions): string | null;
 	generateName(
 		minLength: number,
 		maxLength: number,
@@ -49,20 +106,45 @@ class NameGenerator {
 		endsWith: string,
 		includes: string,
 		excludes: string,
+		regexMatch?: RegExp | null,
+	): string | null;
+	generateName(
+		optionsOrMinLength: NameGenerationOptions | number,
+		maxLength?: number,
+		startsWith = "",
+		endsWith = "",
+		includes = "",
+		excludes = "",
 		regexMatch: RegExp | null = null,
 	): string | null {
+		const options = resolveOptions(
+			optionsOrMinLength,
+			maxLength,
+			startsWith,
+			endsWith,
+			includes,
+			excludes,
+			regexMatch,
+		);
+		return this.generateNameWithOptions(options);
+	}
+
+	private generateNameWithOptions(
+		options: ResolvedNameGenerationOptions,
+	): string | null {
 		assert(
-			Number.isInteger(minLength) && minLength >= 0,
+			Number.isInteger(options.minLength) && options.minLength >= 0,
 			"Minimum length must be a non-negative integer",
 		);
 		assert(
-			Number.isInteger(maxLength) && maxLength >= minLength,
+			Number.isInteger(options.maxLength) &&
+				options.maxLength >= options.minLength,
 			"Maximum length must be an integer greater than or equal to minimum length",
 		);
 
 		let name: string;
 
-		const generated = this._generator.generate(maxLength);
+		const generated = this._generator.generate(options.maxLength);
 		if (generated === null) {
 			return null;
 		}
@@ -70,13 +152,13 @@ class NameGenerator {
 		name = name.replaceAll("#", "");
 
 		if (
-			name.length >= minLength &&
-			name.length <= maxLength &&
-			name.startsWith(startsWith) &&
-			name.endsWith(endsWith) &&
-			(includes.length === 0 || name.includes(includes)) &&
-			(excludes.length === 0 || !name.includes(excludes)) &&
-			(regexMatch == null || name.match(regexMatch))
+			Array.from(name).length >= options.minLength &&
+			Array.from(name).length <= options.maxLength &&
+			name.startsWith(options.startsWith) &&
+			name.endsWith(options.endsWith) &&
+			(options.includes.length === 0 || name.includes(options.includes)) &&
+			(options.excludes.length === 0 || !name.includes(options.excludes)) &&
+			(options.regexMatch == null || name.match(options.regexMatch))
 		) {
 			return name;
 		}
@@ -97,6 +179,7 @@ class NameGenerator {
 	 * @param   regexMatch  The regular expression the word must match.
 	 * @return  A word that meets the specified constraints, or null if no word that met the constraints was generated in the time alotted.
 	 */
+	generateNames(n: number, options: NameBatchOptions): string[];
 	generateNames(
 		n: number,
 		minLength: number,
@@ -105,19 +188,52 @@ class NameGenerator {
 		endsWith: string,
 		includes: string,
 		excludes: string,
+		maxTimePerName?: number,
+		regexMatch?: RegExp | null,
+	): string[];
+	generateNames(
+		n: number,
+		optionsOrMinLength: NameBatchOptions | number,
+		maxLength?: number,
+		startsWith = "",
+		endsWith = "",
+		includes = "",
+		excludes = "",
 		maxTimePerName = 200,
 		regexMatch: RegExp | null = null,
+	): string[] {
+		const options = resolveOptions(
+			optionsOrMinLength,
+			maxLength,
+			startsWith,
+			endsWith,
+			includes,
+			excludes,
+			regexMatch,
+		);
+		const timePerName =
+			typeof optionsOrMinLength === "number"
+				? maxTimePerName
+				: (optionsOrMinLength.maxTimePerName ?? 200);
+		return this.generateNamesWithOptions(n, options, timePerName);
+	}
+
+	private generateNamesWithOptions(
+		n: number,
+		options: ResolvedNameGenerationOptions,
+		maxTimePerName: number,
 	): string[] {
 		assert(
 			Number.isInteger(n) && n >= 0,
 			"Name count must be a non-negative integer",
 		);
 		assert(
-			Number.isInteger(minLength) && minLength >= 0,
+			Number.isInteger(options.minLength) && options.minLength >= 0,
 			"Minimum length must be a non-negative integer",
 		);
 		assert(
-			Number.isInteger(maxLength) && maxLength >= minLength,
+			Number.isInteger(options.maxLength) &&
+				options.maxLength >= options.minLength,
 			"Maximum length must be an integer greater than or equal to minimum length",
 		);
 		assert(
@@ -131,15 +247,7 @@ class NameGenerator {
 		let currentTime = Date.now();
 
 		while (names.length < n && currentTime < startTime + maxTimePerName * n) {
-			const name = this.generateName(
-				minLength,
-				maxLength,
-				startsWith,
-				endsWith,
-				includes,
-				excludes,
-				regexMatch,
-			);
+			const name = this.generateName(options);
 			if (name != null) {
 				names.push(name);
 			}
@@ -151,4 +259,5 @@ class NameGenerator {
 	}
 }
 
+export type { NameBatchOptions, NameGenerationOptions };
 export { NameGenerator };
