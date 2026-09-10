@@ -30,7 +30,7 @@
     "@biomejs/biome": "2.5.13",
     "@types/node": "^22.20.2",
     "tsx": "^4.23.13",
-    "typescript": "^6.0.1"
+    "typescript": "^7.0.2"
   },
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
