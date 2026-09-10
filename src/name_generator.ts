@@ -1,5 +1,6 @@
 import { assert } from "./assert";
 import { Generator } from "./generator";
+import type { RandomSource } from "./model";
 
 /**
  * An example name generator that builds upon the Generator class. This should be sufficient for most simple name generation scenarios.
@@ -24,8 +25,9 @@ class NameGenerator {
 		order: number,
 		prior: number,
 		backoff = false,
+		random: RandomSource = Math.random,
 	) {
-		this._generator = new Generator(data, order, prior, backoff);
+		this._generator = new Generator(data, order, prior, backoff, random);
 	}
 
 	/**

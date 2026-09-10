@@ -1,5 +1,7 @@
 import { assert } from "./assert";
 
+type RandomSource = () => number;
+
 /**
  * A Markov model built using string training data.
  */
@@ -37,6 +39,7 @@ class Model {
 		order: number,
 		prior: number,
 		alphabet: string[],
+		private readonly random: RandomSource = Math.random,
 	) {
 		assert(data.length > 0, "Training data must not be empty");
 		assert(alphabet.length > 0, "Alphabet must not be empty");
@@ -146,7 +149,12 @@ class Model {
 			totals.push(accumulator);
 		}
 
-		const rand = Math.random() * accumulator;
+		const randomValue = this.random();
+		assert(
+			Number.isFinite(randomValue) && randomValue >= 0 && randomValue < 1,
+			"Random source must return a finite number from 0 (inclusive) to 1 (exclusive)",
+		);
+		const rand = randomValue * accumulator;
 		for (let i = 0; i < totals.length; i++) {
 			if (rand < totals[i]) {
 				return i;
@@ -157,4 +165,5 @@ class Model {
 	}
 }
 
+export type { RandomSource };
 export { Model };

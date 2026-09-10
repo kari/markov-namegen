@@ -1,5 +1,5 @@
 import { assert } from "./assert";
-import { Model } from "./model";
+import { Model, type RandomSource } from "./model";
 
 /**
  * A procedural word generator that uses Markov chains built from a user-provided array of words.
@@ -49,6 +49,7 @@ class Generator {
 		order: number,
 		prior: number,
 		backoff: boolean,
+		random: RandomSource = Math.random,
 	) {
 		assert(data.length > 0, "Training data must not be empty");
 		assert(
@@ -85,10 +86,12 @@ class Generator {
 		this._models = [];
 		if (this._backoff) {
 			for (let i = 0; i < order; i++) {
-				this._models.push(new Model([...data], order - i, prior, domain)); // from highest to lowest order
+				this._models.push(
+					new Model([...data], order - i, prior, domain, random),
+				); // from highest to lowest order
 			}
 		} else {
-			this._models.push(new Model(data, order, prior, domain));
+			this._models.push(new Model(data, order, prior, domain, random));
 		}
 	}
 

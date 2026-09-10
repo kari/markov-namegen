@@ -11,6 +11,33 @@ test("training does not mutate the input data", () => {
 	assert.deepEqual(data, ["alpha", "beta"]);
 });
 
+test("uses the supplied random source", () => {
+	let calls = 0;
+	const random = () => {
+		calls++;
+		return 0.999;
+	};
+	const model = new Model(["ab"], 2, 0, ["#", "a", "b"], random);
+
+	assert.equal(model.generate("##"), "a");
+	assert.equal(calls, 1);
+});
+
+test("forwards the random source through NameGenerator", () => {
+	const generator = new NameGenerator(["ab"], 2, 0, false, () => 0.999);
+
+	assert.equal(generator.generateName(2, 2, "", "", "", ""), "ab");
+});
+
+test("rejects invalid random source values", () => {
+	const model = new Model(["ab"], 2, 0, ["#", "a", "b"], () => 1);
+
+	assert.throws(
+		() => model.generate("##"),
+		/Random source must return a finite number/,
+	);
+});
+
 test("rejects invalid model configuration", () => {
 	assert.throws(
 		() => new Generator([], 2, 0, false),

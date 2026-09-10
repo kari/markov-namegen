@@ -20,6 +20,12 @@ const namegen = new NameGenerator(data, 3, 0, false);
 console.log(namegen.generateName(5, 11, "", "", "", ""));
 ```
 
+Pass a fifth constructor argument to control randomness. This is useful for reproducible output and tests.
+
+```ts
+const reproducible = new NameGenerator(data, 3, 0, false, () => 0.5);
+```
+
 or if you want to generate a lot of names in one go
 
 ```ts
