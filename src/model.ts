@@ -78,7 +78,9 @@ class Model {
 			return null;
 		}
 		assert(chain.length > 0);
-		return this._alphabet[this.selectIndex(chain)];
+		const prediction = this._alphabet[this.selectIndex(chain)];
+		assert(prediction !== undefined);
+		return prediction;
 	}
 
 	/**
@@ -177,7 +179,8 @@ class Model {
 		);
 		const rand = randomValue * accumulator;
 		for (let i = 0; i < totals.length; i++) {
-			if (rand < totals[i]) {
+			const total = totals[i];
+			if (total !== undefined && rand < total) {
 				return i;
 			}
 		}
