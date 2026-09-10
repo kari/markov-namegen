@@ -2,7 +2,8 @@
 
 This is a TypeScript port of [markov-namegen-lib](https://github.com/Tw1ddle/markov-namegen-lib). It is a Markov chain based name or word generator library.
 
-The package provides both native ESM imports and CommonJS `require` support.
+The package is ESM-only and requires an environment with native ES modules.
+CommonJS consumers should migrate from `require()` to a native `import` or use dynamic `import()`.
 
 ## Features
 
