@@ -29,6 +29,12 @@ test("forwards the random source through NameGenerator", () => {
 	assert.equal(generator.generateName(2, 2, "", "", "", ""), "ab");
 });
 
+test("bounds generation when a model does not produce a terminator", () => {
+	const generator = new Generator(["a"], 1, 1, false, () => 0.75);
+
+	assert.equal(generator.generate(3), null);
+});
+
 test("rejects invalid random source values", () => {
 	const model = new Model(["ab"], 2, 0, ["#", "a", "b"], () => 1);
 
@@ -54,6 +60,14 @@ test("rejects invalid model configuration", () => {
 	assert.throws(
 		() => new Generator(["alpha"], 2, 2, false),
 		/Prior must be a finite number/,
+	);
+	assert.throws(
+		() => new Generator([""], 2, 0, false),
+		/Training words must be non-empty/,
+	);
+	assert.throws(
+		() => new Generator(["al#pha"], 2, 0, false),
+		/Training words must be non-empty/,
 	);
 });
 
@@ -91,6 +105,14 @@ test("retraining replaces the previous observations", () => {
 
 	assert.equal(model.generate("##"), "c");
 	assert.throws(() => model.retrain([]), /Training data must not be empty/);
+});
+
+test("retraining rebuilds the alphabet", () => {
+	const model = new Model(["ab"], 1, 0, ["#", "a", "b"], () => 0);
+
+	model.retrain(["z"]);
+
+	assert.equal(model.generate("#"), "z");
 });
 
 test("name generator produces names without the boundary marker", () => {

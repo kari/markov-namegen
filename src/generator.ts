@@ -21,21 +21,21 @@ class Generator {
 	 * Generators own models of order 1 through order "n".
 	 * Generators of order "n" look back up to "n" characters when choosing the next character.
 	 */
-	public order: number;
+	public readonly order: number;
 	/**
 	 * Dirichlet prior, acts as an additive smoothing factor.
 	 *
 	 * The prior adds a constant probability that a random letter is picked from the alphabet when generating a new letter.
 	 */
-	public prior: number;
+	public readonly prior: number;
 	/**
 	 * Whether to fall back to lower orders of models when a higher-order model fails to generate a letter.
 	 */
-	private _backoff: boolean;
+	private readonly _backoff: boolean;
 	/**
 	 * The array of Markov models used by this generator, starting from highest order to lowest order.
 	 */
-	private _models: Model[];
+	private readonly _models: Model[];
 
 	/**
 	 * Creates a new procedural word Generator.
@@ -52,6 +52,13 @@ class Generator {
 		random: RandomSource = Math.random,
 	) {
 		assert(data.length > 0, "Training data must not be empty");
+		assert(
+			data.every(
+				(word) =>
+					typeof word === "string" && word.length > 0 && !word.includes("#"),
+			),
+			"Training words must be non-empty and must not contain '#'",
+		);
 		assert(
 			Number.isInteger(order) && order >= 1,
 			"Order must be a positive integer",
@@ -97,17 +104,32 @@ class Generator {
 
 	/**
 	 * Generates a word.
+	 * @param   maxLength When supplied, returns null if generation cannot terminate within this length.
 	 * @return The generated word.
 	 */
-	generate(): string {
+	generate(): string;
+	generate(maxLength: number): string | null;
+	generate(maxLength?: number): string | null {
+		if (maxLength !== undefined) {
+			assert(
+				Number.isInteger(maxLength) && maxLength >= 0,
+				"Maximum length must be a non-negative integer",
+			);
+		}
+
 		let word = "#".repeat(this.order);
 		let letter = this.getLetter(word);
 
 		while (letter !== "#" && letter != null) {
-			if (letter != null) {
-				word += letter;
+			if (maxLength !== undefined && word.length - this.order >= maxLength) {
+				return null;
 			}
+			word += letter;
 			letter = this.getLetter(word);
+		}
+
+		if (maxLength !== undefined && letter === null) {
+			return null;
 		}
 
 		return word;

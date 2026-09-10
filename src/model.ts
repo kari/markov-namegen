@@ -42,6 +42,13 @@ class Model {
 		private readonly random: RandomSource = Math.random,
 	) {
 		assert(data.length > 0, "Training data must not be empty");
+		assert(
+			data.every(
+				(word) =>
+					typeof word === "string" && word.length > 0 && !word.includes("#"),
+			),
+			"Training words must be non-empty and must not contain '#'",
+		);
 		assert(alphabet.length > 0, "Alphabet must not be empty");
 		assert(
 			Number.isInteger(order) && order >= 1,
@@ -54,7 +61,7 @@ class Model {
 
 		this._order = order;
 		this._prior = prior;
-		this._alphabet = alphabet;
+		this._alphabet = [...alphabet];
 
 		this._observations = new Map<string, string[]>();
 		this.train(data);
@@ -80,6 +87,20 @@ class Model {
 	 */
 	retrain(data: readonly string[]) {
 		assert(data.length > 0, "Training data must not be empty");
+		assert(
+			data.every(
+				(word) =>
+					typeof word === "string" && word.length > 0 && !word.includes("#"),
+			),
+			"Training words must be non-empty and must not contain '#'",
+		);
+		const alphabet = new Set<string>();
+		for (const word of data) {
+			for (const letter of word) {
+				alphabet.add(letter);
+			}
+		}
+		this._alphabet = ["#", ...[...alphabet].sort()];
 		this._observations = new Map<string, string[]>();
 		this.train(data);
 		this.buildChains();

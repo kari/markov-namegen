@@ -62,7 +62,11 @@ class NameGenerator {
 
 		let name: string;
 
-		name = this._generator.generate();
+		const generated = this._generator.generate(maxLength);
+		if (generated === null) {
+			return null;
+		}
+		name = generated;
 		name = name.replaceAll("#", "");
 
 		if (
@@ -123,8 +127,8 @@ class NameGenerator {
 
 		const names: string[] = [];
 
-		const startTime = performance.now();
-		let currentTime = performance.now();
+		const startTime = Date.now();
+		let currentTime = Date.now();
 
 		while (names.length < n && currentTime < startTime + maxTimePerName * n) {
 			const name = this.generateName(
@@ -140,7 +144,7 @@ class NameGenerator {
 				names.push(name);
 			}
 
-			currentTime = performance.now();
+			currentTime = Date.now();
 		}
 
 		return names;
