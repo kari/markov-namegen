@@ -3,6 +3,14 @@
   "version": "1.0.3",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "sideEffects": false,
   "description": "Markov chain based name generator in TypeScript",
   "keywords": [
     "markov-chain",
@@ -19,12 +27,18 @@
     "url": "git+https://github.com/kari/markov-namegen.git"
   },
   "devDependencies": {
-    "@biomejs/biome": "1.5.3",
-    "typescript": "^5.3.2"
+    "@biomejs/biome": "2.5.13",
+    "@types/node": "^22.20.2",
+    "tsx": "^4.23.13",
+    "typescript": "^6.0.1"
   },
   "scripts": {
-    "clean": "npx rimraf dist",
-    "build": "tsc"
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "build": "tsc -p tsconfig.json",
+    "test": "tsx --test test/*.test.ts",
+    "format": "biome format --write src test",
+    "lint": "biome check src test/markov.test.ts",
+    "prepack": "npm run clean && npm run build"
   },
   "files": [
     "dist/"

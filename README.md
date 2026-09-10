@@ -13,15 +13,17 @@ Offers most of the features available in the reference Haxe implementation
 ## Usage
 
 ```ts
+import { NameGenerator } from "@ksilvennoinen/markov-namegen";
+
 const data = ["lots", "of", "words", "to", "learn", "from"];
 const namegen = new NameGenerator(data, 3, 0, false);
-console.log(namegen.generate(5, 11, "", "", "", ""));
+console.log(namegen.generateName(5, 11, "", "", "", ""));
 ```
 
 or if you want to generate a lot of names in one go
 
 ```ts
-console.log(namegen.generateNames(20, 5, 11, "", "", "", ""))
+console.log(namegen.generateNames(20, 5, 11, "", "", "", ""));
 ```
 
 For training data and word lists, see [the original project's `word_lists` folder](https://github.com/Tw1ddle/markov-namegen-lib/tree/master/word_lists).
