@@ -44,9 +44,21 @@ class Generator {
 	 * @param   prior   The dirichlet prior/additive smoothing "randomness" factor.
 	 * @param   backoff Whether to fall back to lower order models when the highest order model fails to generate a letter.
 	 */
-	constructor(data: string[], order: number, prior: number, backoff: boolean) {
-		assert(order >= 1);
-		assert(prior >= 0);
+	constructor(
+		data: readonly string[],
+		order: number,
+		prior: number,
+		backoff: boolean,
+	) {
+		assert(data.length > 0, "Training data must not be empty");
+		assert(
+			Number.isInteger(order) && order >= 1,
+			"Order must be a positive integer",
+		);
+		assert(
+			Number.isFinite(prior) && prior >= 0 && prior <= 1,
+			"Prior must be a finite number between 0 and 1",
+		);
 
 		this.order = order;
 		this.prior = prior;

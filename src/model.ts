@@ -38,8 +38,16 @@ class Model {
 		prior: number,
 		alphabet: string[],
 	) {
-		assert(alphabet.length > 0 && data.length > 0);
-		assert(prior >= 0 && prior <= 1);
+		assert(data.length > 0, "Training data must not be empty");
+		assert(alphabet.length > 0, "Alphabet must not be empty");
+		assert(
+			Number.isInteger(order) && order >= 1,
+			"Order must be a positive integer",
+		);
+		assert(
+			Number.isFinite(prior) && prior >= 0 && prior <= 1,
+			"Prior must be a finite number between 0 and 1",
+		);
 
 		this._order = order;
 		this._prior = prior;
@@ -68,6 +76,7 @@ class Model {
 	 * @param   data    The new training data.
 	 */
 	retrain(data: readonly string[]) {
+		assert(data.length > 0, "Training data must not be empty");
 		this._observations = new Map<string, string[]>();
 		this.train(data);
 		this.buildChains();

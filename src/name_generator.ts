@@ -1,3 +1,4 @@
+import { assert } from "./assert";
 import { Generator } from "./generator";
 
 /**
@@ -18,7 +19,12 @@ class NameGenerator {
 	 * @param   prior   The dirichlet prior/additive smoothing "randomness" factor.
 	 * @param   backoff Whether to fall back to lower order models when the highest order model fails to generate a letter (defaults to false).
 	 */
-	constructor(data: string[], order: number, prior: number, backoff = false) {
+	constructor(
+		data: readonly string[],
+		order: number,
+		prior: number,
+		backoff = false,
+	) {
 		this._generator = new Generator(data, order, prior, backoff);
 	}
 
@@ -43,6 +49,15 @@ class NameGenerator {
 		excludes: string,
 		regexMatch: RegExp | null = null,
 	): string | null {
+		assert(
+			Number.isInteger(minLength) && minLength >= 0,
+			"Minimum length must be a non-negative integer",
+		);
+		assert(
+			Number.isInteger(maxLength) && maxLength >= minLength,
+			"Maximum length must be an integer greater than or equal to minimum length",
+		);
+
 		let name: string;
 
 		name = this._generator.generate();
@@ -87,6 +102,23 @@ class NameGenerator {
 		maxTimePerName = 200,
 		regexMatch: RegExp | null = null,
 	): string[] {
+		assert(
+			Number.isInteger(n) && n >= 0,
+			"Name count must be a non-negative integer",
+		);
+		assert(
+			Number.isInteger(minLength) && minLength >= 0,
+			"Minimum length must be a non-negative integer",
+		);
+		assert(
+			Number.isInteger(maxLength) && maxLength >= minLength,
+			"Maximum length must be an integer greater than or equal to minimum length",
+		);
+		assert(
+			Number.isFinite(maxTimePerName) && maxTimePerName >= 0,
+			"Maximum time per name must be a non-negative finite number",
+		);
+
 		const names: string[] = [];
 
 		const startTime = performance.now();
