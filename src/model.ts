@@ -134,33 +134,17 @@ class Model {
 		this._chains = new Map<string, number[]>();
 
 		for (const context of this._observations.keys()) {
+			const counts = new Map<string, number>();
+			for (const prediction of this._observations.get(context) ?? []) {
+				counts.set(prediction, (counts.get(prediction) ?? 0) + 1);
+			}
+
+			const chain: number[] = [];
+			this._chains.set(context, chain);
 			for (const prediction of this._alphabet) {
-				let value = this._chains.get(context);
-				if (value == null) {
-					value = [];
-					this._chains.set(context, value);
-				}
-				value.push(
-					this._prior +
-						this.countMatches(this._observations.get(context), prediction),
-				);
+				chain.push(this._prior + (counts.get(prediction) ?? 0));
 			}
 		}
-	}
-
-	private countMatches(arr: string[] | undefined, v: string): number {
-		if (arr === undefined) {
-			return 0;
-		}
-
-		let i = 0;
-		for (const s of arr) {
-			if (s === v) {
-				i++;
-			}
-		}
-
-		return i;
 	}
 
 	private selectIndex(chain: number[]): number {
