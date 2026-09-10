@@ -134,7 +134,7 @@ class Generator {
 		for (const model of this._models) {
 			letter = model.generate(context);
 			if (letter == null) {
-				context = context.substring(1);
+				context = Array.from(context).slice(1).join("");
 			} else {
 				break;
 			}

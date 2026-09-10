@@ -92,6 +92,10 @@ test("rejects invalid model configuration", () => {
 		() => new Generator(["al#pha"], 2, 0, false),
 		/Training words must be non-empty/,
 	);
+	assert.throws(
+		() => new Model(["ab"], 2, 0, ["#", "a"]),
+		/Alphabet must include every symbol/,
+	);
 });
 
 test("rejects invalid generation constraints", () => {

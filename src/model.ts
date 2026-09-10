@@ -11,11 +11,11 @@ class Model {
 	/**
 	 * The order of the model i.e. how many characters this model looks back.
 	 */
-	private _order: number;
+	private readonly _order: number;
 	/**
 	 * Dirichlet prior, like additive smoothing, increases the probability of any item being picked.
 	 */
-	private _prior: number;
+	private readonly _prior: number;
 	/**
 	 * The alphabet of the training data.
 	 */
@@ -45,6 +45,16 @@ class Model {
 	) {
 		validateTrainingData(data);
 		assert(alphabet.length > 0, "Alphabet must not be empty");
+		assert(
+			alphabet.includes("#"),
+			"Alphabet must include '#' as the boundary marker",
+		);
+		assert(
+			data.every((word) =>
+				Array.from(word).every((symbol) => alphabet.includes(symbol)),
+			),
+			"Alphabet must include every symbol in the training data",
+		);
 		assert(
 			Number.isInteger(order) && order >= 1,
 			"Order must be a positive integer",
