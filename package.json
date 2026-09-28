@@ -28,8 +28,8 @@
     "url": "git+https://github.com/kari/markov-namegen.git"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.13",
-    "@types/node": "^22.20.2",
+    "@biomejs/biome": "2.5.14",
+    "@types/node": "^24.0.0",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2"
   },
