@@ -4,6 +4,7 @@ This is a TypeScript port of [markov-namegen-lib](https://github.com/Tw1ddle/mar
 
 The package is ESM-only and requires an environment with native ES modules.
 CommonJS consumers should migrate from `require()` to a native `import` or use dynamic `import()`.
+On Node 22.12 and later, plain `require()` of this package also works.
 
 ## Features
 
@@ -42,6 +43,8 @@ console.log(
 );
 ```
 
+The `maxTimePerName` option is the average time budget per name: generating `n` names is capped at roughly `maxTimePerName * n` milliseconds in total.
+
 or if you want to generate a lot of names in one go
 
 ```ts
@@ -52,6 +55,8 @@ For training data and word lists, see [the original project's `word_lists` folde
 
 ## Notes
 
+- Calling `generate()` on a `Generator` without a `maxLength` can loop indefinitely when no reachable context predicts the `#` terminator, which is possible with a `prior` of 0 and cyclic training data. Pass a `maxLength`, or use `NameGenerator`, which always bounds generation.
+- The low-level `Generator.generate()` returns the word including its leading boundary markers (one `#` per order), e.g. `"##ab"` for order 2. `NameGenerator` strips them before applying its constraints.
 - The original Haxe implementation [can target Javascript](https://haxe.org/manual/target-javascript.html), so both of these can ultimately compile/transpile down to that. So if you are just looking for a JavaScript implementation, you might want to use the original instead.
 
 ## License

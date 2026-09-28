@@ -87,9 +87,9 @@ class Generator {
 	}
 
 	/**
-	 * Generates a word.
-	 * @param   maxLength When supplied, returns null if generation cannot terminate within this length.
-	 * @return The generated word.
+	 * Generates a word, including the leading boundary markers (one "#" per order).
+	 * @param   maxLength When supplied, returns null if generation cannot terminate within this length. Without a maximum length, generation can loop indefinitely when no reachable context predicts the boundary marker, which is possible with a prior of 0 and cyclic training data.
+	 * @return The generated word, or null if it could not be generated within the given length.
 	 */
 	generate(): string;
 	generate(maxLength: number): string | null;

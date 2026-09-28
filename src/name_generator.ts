@@ -13,6 +13,9 @@ interface NameGenerationOptions {
 }
 
 interface NameBatchOptions extends NameGenerationOptions {
+	/**
+	 * The average time in milliseconds to spend generating each name. The total time budget for generating n names is maxTimePerName * n. Defaults to 200.
+	 */
 	maxTimePerName?: number;
 }
 
@@ -167,7 +170,7 @@ class NameGenerator {
 	}
 
 	/**
-	 * Attempts to generate "n" names that meet the given constraints within an alotted time.
+	 * Attempts to generate "n" names that meet the given constraints within an allotted time.
 	 * @param   n   The number of names to generate.
 	 * @param   minLength   The minimum length of the word.
 	 * @param   maxLength   The maximum length of the word.
@@ -175,9 +178,9 @@ class NameGenerator {
 	 * @param   endsWith    The text the word must end with.
 	 * @param   includes    The text the word must include.
 	 * @param   excludes    The text the word must exclude.
-	 * @param   maxTimePerName  The maximum time in milliseconds to spend generating each name.
+	 * @param   maxTimePerName  The average time in milliseconds to spend generating each name. The total time budget for generating n names is maxTimePerName * n.
 	 * @param   regexMatch  The regular expression the word must match.
-	 * @return  A word that meets the specified constraints, or null if no word that met the constraints was generated in the time alotted.
+	 * @return  The generated names, or fewer names if the time budget ran out.
 	 */
 	generateNames(n: number, options: NameBatchOptions): string[];
 	generateNames(

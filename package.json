@@ -9,7 +9,8 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "sideEffects": false,
   "description": "Markov chain based name generator in TypeScript",
@@ -22,6 +23,9 @@
   ],
   "author": "Kari Silvennoinen",
   "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
   "homepage": "https://github.com/kari/markov-namegen",
   "repository": {
     "type": "git",
@@ -38,7 +42,7 @@
     "build": "npm run clean && tsc -p tsconfig.json",
     "test": "tsc -p tsconfig.test.json --noEmit && tsx --test test/*.test.ts",
     "format": "biome format --write src test",
-    "lint": "biome check src test/markov.test.ts",
+    "lint": "biome check src test",
     "prepack": "npm run build"
   },
   "files": [

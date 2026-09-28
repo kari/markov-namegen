@@ -50,6 +50,10 @@ class Model {
 			"Alphabet must include '#' as the boundary marker",
 		);
 		assert(
+			alphabet.length === new Set(alphabet).size,
+			"Alphabet must not contain duplicate symbols",
+		);
+		assert(
 			data.every((word) =>
 				Array.from(word).every((symbol) => alphabet.includes(symbol)),
 			),

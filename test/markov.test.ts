@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { Generator } from "../src/generator";
-import { Model } from "../src/model";
-import { NameGenerator } from "../src/name_generator";
+import { Generator } from "../src/generator.js";
+import { Model } from "../src/model.js";
+import { NameGenerator } from "../src/name_generator.js";
 
 test("training does not mutate the input data", () => {
 	const data = ["alpha", "beta"];
@@ -95,6 +95,10 @@ test("rejects invalid model configuration", () => {
 	assert.throws(
 		() => new Model(["ab"], 2, 0, ["#", "a"]),
 		/Alphabet must include every symbol/,
+	);
+	assert.throws(
+		() => new Model(["ab"], 2, 0, ["#", "a", "b", "b"]),
+		/Alphabet must not contain duplicate symbols/,
 	);
 });
 
