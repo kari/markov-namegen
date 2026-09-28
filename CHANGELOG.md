@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-09-28
+
+### Added
+
+- Per-call random source injection: `Generator.generate()`, `Model.generate()`, `generateName()`, and `generateNames()` accept an optional `random` override that takes precedence over the source bound at construction for the duration of the call. Available as the `random` option in the named forms and as the trailing parameter in the positional forms.
+- Serialization format version 2: chains are stored as sparse `[symbol index, count]` pairs instead of dense cumulative weights, making serialized payloads roughly an order of magnitude smaller. `deserialize()` still accepts version 1 payloads written by 2.1.0, and deserialized models generate identically.
+
+### Changed
+
+- `SerializedModel` and `SerializedGenerator` now describe the version 2 payload shape, and `serialize()` emits version 2.
+
 ## [2.1.0] - 2026-09-28
 
 ### Added

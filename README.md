@@ -31,6 +31,12 @@ Pass a fifth constructor argument to control randomness. This is useful for repr
 const reproducible = new NameGenerator(data, 3, 0, false, () => 0.5);
 ```
 
+Individual calls can also override the random source, which takes precedence over the bound source for that call. This makes per-entity seeded randomness straightforward: pass each entity's own random source to `generateName`/`generateNames` as the `random` option (or the trailing parameter in the positional form), with no shared mutable state.
+
+```ts
+namegen.generateName({ minLength: 5, maxLength: 11, random: entityRandom });
+```
+
 The positional `generateName` and `generateNames` forms remain supported for compatibility. Named options are also available for batch generation:
 
 ```ts
@@ -69,6 +75,8 @@ revived.generate(12); // with the same random source, output matches the origina
 ```
 
 `serialize()` returns an object typed as `SerializedGenerator` (or `SerializedModel` for a single `Model`) rather than a string, so it can also be stored directly in databases or passed to `structuredClone`. `deserialize` takes `unknown`, validates the whole payload at runtime, and throws a descriptive error on malformed input. The format is self-describing: `format` distinguishes generator payloads from model payloads, and `version` will be bumped if the format ever changes.
+
+Since format version 2, chains are stored as sparse `[symbol index, count]` pairs instead of dense cumulative weights, making payloads roughly an order of magnitude smaller — generation is unaffected, as the dense chains are rebuilt on deserialization. Version 1 payloads (from 2.1.0) are still accepted by `deserialize()`. For storage and transfer, the JSON also compresses well with gzip.
 
 ## Notes
 

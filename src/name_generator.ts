@@ -10,6 +10,10 @@ interface NameGenerationOptions {
 	includes?: string;
 	excludes?: string;
 	regexMatch?: RegExp | null;
+	/**
+	 * Optional random source used for this call, overriding the source bound at construction. Defaults to the bound source.
+	 */
+	random?: RandomSource;
 }
 
 interface NameBatchOptions extends NameGenerationOptions {
@@ -27,6 +31,7 @@ interface ResolvedNameGenerationOptions {
 	includes: string;
 	excludes: string;
 	regexMatch: RegExp | null;
+	random?: RandomSource;
 }
 
 function resolveOptions(
@@ -37,6 +42,7 @@ function resolveOptions(
 	includes = "",
 	excludes = "",
 	regexMatch: RegExp | null = null,
+	random?: RandomSource,
 ): ResolvedNameGenerationOptions {
 	if (typeof optionsOrMinLength === "number") {
 		return {
@@ -47,6 +53,7 @@ function resolveOptions(
 			includes,
 			excludes,
 			regexMatch,
+			random,
 		};
 	}
 
@@ -58,6 +65,7 @@ function resolveOptions(
 		includes: optionsOrMinLength.includes ?? "",
 		excludes: optionsOrMinLength.excludes ?? "",
 		regexMatch: optionsOrMinLength.regexMatch ?? null,
+		random: optionsOrMinLength.random,
 	};
 }
 
@@ -99,6 +107,7 @@ class NameGenerator {
 	 * @param   includes    The text the word must include.
 	 * @param   excludes    The text the word must exclude.
 	 * @param   regexMatch  The regular expression the word must match.
+	 * @param   random  Optional random source used for this call, overriding the source bound at construction.
 	 * @return  A word that meets the specified constraints, or null if the generated word did not meet the constraints.
 	 */
 	generateName(options: NameGenerationOptions): string | null;
@@ -110,6 +119,7 @@ class NameGenerator {
 		includes: string,
 		excludes: string,
 		regexMatch?: RegExp | null,
+		random?: RandomSource,
 	): string | null;
 	generateName(
 		optionsOrMinLength: NameGenerationOptions | number,
@@ -119,6 +129,7 @@ class NameGenerator {
 		includes = "",
 		excludes = "",
 		regexMatch: RegExp | null = null,
+		random?: RandomSource,
 	): string | null {
 		const options = resolveOptions(
 			optionsOrMinLength,
@@ -128,6 +139,7 @@ class NameGenerator {
 			includes,
 			excludes,
 			regexMatch,
+			random,
 		);
 		return this.generateNameWithOptions(options);
 	}
@@ -147,7 +159,10 @@ class NameGenerator {
 
 		let name: string;
 
-		const generated = this._generator.generate(options.maxLength);
+		const generated = this._generator.generate(
+			options.maxLength,
+			options.random,
+		);
 		if (generated === null) {
 			return null;
 		}
@@ -180,6 +195,7 @@ class NameGenerator {
 	 * @param   excludes    The text the word must exclude.
 	 * @param   maxTimePerName  The average time in milliseconds to spend generating each name. The total time budget for generating n names is maxTimePerName * n.
 	 * @param   regexMatch  The regular expression the word must match.
+	 * @param   random  Optional random source used for this call, overriding the source bound at construction.
 	 * @return  The generated names, or fewer names if the time budget ran out.
 	 */
 	generateNames(n: number, options: NameBatchOptions): string[];
@@ -193,6 +209,7 @@ class NameGenerator {
 		excludes: string,
 		maxTimePerName?: number,
 		regexMatch?: RegExp | null,
+		random?: RandomSource,
 	): string[];
 	generateNames(
 		n: number,
@@ -204,6 +221,7 @@ class NameGenerator {
 		excludes = "",
 		maxTimePerName = 200,
 		regexMatch: RegExp | null = null,
+		random?: RandomSource,
 	): string[] {
 		const options = resolveOptions(
 			optionsOrMinLength,
@@ -213,6 +231,7 @@ class NameGenerator {
 			includes,
 			excludes,
 			regexMatch,
+			random,
 		);
 		const timePerName =
 			typeof optionsOrMinLength === "number"

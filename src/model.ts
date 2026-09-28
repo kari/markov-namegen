@@ -19,7 +19,7 @@ interface SerializedModel {
 	/**
 	 * The version of the serialization format.
 	 */
-	version: 1;
+	version: 2;
 	/**
 	 * The order of the model i.e. how many characters the model looks back.
 	 */
@@ -33,9 +33,9 @@ interface SerializedModel {
 	 */
 	alphabet: string[];
 	/**
-	 * The Markov chains as [context, cumulative weights] pairs, with one weight per alphabet symbol in alphabet order.
+	 * The Markov chains as [context, [symbol index, count]] pairs, with one pair per observed symbol. Symbol indices refer to the alphabet, and unobserved symbols get the dirichlet prior as their weight when the model is rebuilt.
 	 */
-	chains: [string, number[]][];
+	chains: [string, [number, number][]][];
 }
 
 /**
@@ -106,14 +106,16 @@ class Model {
 	/**
 	 * Attempts to generate the next letter in the word given the context (the previous "order" letters).
 	 * @param   context The previous "order" letters in the word.
+	 * @param   random  Optional random source used for this call, overriding the source bound at construction.
+	 * @return  The generated letter, or null if the context is unknown to the model.
 	 */
-	generate(context: string): string | null {
+	generate(context: string, random?: RandomSource): string | null {
 		const chain = this._chains.get(context);
 		if (chain === undefined) {
 			return null;
 		}
 		assert(chain.length > 0);
-		const prediction = this._alphabet[this.selectIndex(chain)];
+		const prediction = this._alphabet[this.selectIndex(chain, random)];
 		assert(prediction !== undefined);
 		return prediction;
 	}
@@ -131,21 +133,29 @@ class Model {
 	}
 
 	/**
-	 * Serializes the model into a plain JSON-serializable object. The observations are not serialized as the Markov chains fully determine generation.
+	 * Serializes the model into a plain JSON-serializable object. The chains are stored as sparse symbol counts (format version 2), which is roughly an order of magnitude smaller than the dense cumulative weights of version 1. The observations are not serialized as the Markov chains fully determine generation.
 	 * The random source cannot be serialized, so it must be supplied when deserializing.
 	 * @return  The serialized model.
 	 */
 	serialize(): SerializedModel {
 		return {
 			format: "markov-namegen/model",
-			version: 1,
+			version: 2,
 			order: this._order,
 			prior: this._prior,
 			alphabet: [...this._alphabet],
-			chains: [...this._chains].map(([context, chain]): [string, number[]] => [
-				context,
-				[...chain],
-			]),
+			chains: [...this._chains].map(([context, chain]) => {
+				const pairs: [number, number][] = [];
+				let previous = 0;
+				chain.forEach((cumulative, index) => {
+					const count = Math.round(cumulative - previous - this._prior);
+					if (count > 0) {
+						pairs.push([index, count]);
+					}
+					previous = cumulative;
+				});
+				return [context, pairs];
+			}),
 		};
 	}
 
@@ -220,11 +230,11 @@ class Model {
 		}
 	}
 
-	private selectIndex(chain: number[]): number {
+	private selectIndex(chain: number[], random?: RandomSource): number {
 		const total = chain[chain.length - 1];
 		assert(total !== undefined && total > 0);
 
-		const randomValue = this.random();
+		const randomValue = (random ?? this.random)();
 		assert(
 			Number.isFinite(randomValue) && randomValue >= 0 && randomValue < 1,
 			"Random source must return a finite number from 0 (inclusive) to 1 (exclusive)",
@@ -256,7 +266,11 @@ function parseSerializedModel(json: unknown): {
 		record.format === "markov-namegen/model",
 		'Serialized model format must be "markov-namegen/model"',
 	);
-	assert(record.version === 1, "Serialized model version must be 1");
+	const version = record.version;
+	assert(
+		version === 1 || version === 2,
+		"Serialized model version must be 1 or 2",
+	);
 
 	const order = record.order;
 	assert(
@@ -297,26 +311,11 @@ function parseSerializedModel(json: unknown): {
 			"Chain contexts must only contain alphabet symbols",
 		);
 		assert(!chainMap.has(context), "Chain contexts must be unique");
-		assert(
-			Array.isArray(weights) && weights.length === alphabet.length,
-			"Each chain must have exactly one weight per alphabet symbol",
-		);
-		const parsed: number[] = [];
-		let total = 0;
-		for (const weight of weights) {
-			assert(
-				typeof weight === "number" && Number.isFinite(weight) && weight >= 0,
-				"Chain weights must be finite non-negative numbers",
-			);
-			assert(
-				weight >= total,
-				"Chain weights must be non-decreasing cumulative totals",
-			);
-			total = weight;
-			parsed.push(weight);
+		if (version === 1) {
+			chainMap.set(context, parseDenseChain(weights, alphabet));
+		} else {
+			chainMap.set(context, parseSparseChain(weights, alphabet, prior));
 		}
-		assert(total > 0, "Each chain must have a positive total weight");
-		chainMap.set(context, parsed);
 	}
 
 	return {
@@ -325,6 +324,71 @@ function parseSerializedModel(json: unknown): {
 		alphabet,
 		chains: chainMap,
 	};
+}
+
+function parseDenseChain(weights: unknown, alphabet: string[]): number[] {
+	assert(
+		Array.isArray(weights) && weights.length === alphabet.length,
+		"Each chain must have exactly one weight per alphabet symbol",
+	);
+	const chain: number[] = [];
+	let total = 0;
+	for (const weight of weights) {
+		assert(
+			typeof weight === "number" && Number.isFinite(weight) && weight >= 0,
+			"Chain weights must be finite non-negative numbers",
+		);
+		assert(
+			weight >= total,
+			"Chain weights must be non-decreasing cumulative totals",
+		);
+		total = weight;
+		chain.push(weight);
+	}
+	assert(total > 0, "Each chain must have a positive total weight");
+	return chain;
+}
+
+function parseSparseChain(
+	pairs: unknown,
+	alphabet: string[],
+	prior: number,
+): number[] {
+	assert(
+		Array.isArray(pairs),
+		"Each chain must be an array of [symbol index, count] pairs",
+	);
+	const counts = new Array<number>(alphabet.length).fill(0);
+	const seen = new Set<number>();
+	for (const pair of pairs) {
+		assert(
+			Array.isArray(pair) && pair.length === 2,
+			"Each chain must be an array of [symbol index, count] pairs",
+		);
+		const [index, count] = pair;
+		assert(
+			typeof index === "number" &&
+				Number.isInteger(index) &&
+				index >= 0 &&
+				index < alphabet.length,
+			"Chain symbol indices must be integers within the alphabet",
+		);
+		assert(!seen.has(index), "Chain symbol indices must be unique");
+		seen.add(index);
+		assert(
+			typeof count === "number" && Number.isInteger(count) && count > 0,
+			"Chain counts must be positive integers",
+		);
+		counts[index] = count;
+	}
+	const chain: number[] = [];
+	let total = 0;
+	for (const count of counts) {
+		total += prior + count;
+		chain.push(total);
+	}
+	assert(total > 0, "Each chain must have a positive total weight");
+	return chain;
 }
 
 export type { RandomSource, SerializedModel };

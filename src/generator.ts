@@ -1,5 +1,5 @@
 import { assert } from "./assert.js";
-import { Model, type RandomSource, type SerializedModel } from "./model.js";
+import { Model, type RandomSource } from "./model.js";
 import type { TrainingData } from "./training.js";
 import {
 	BOUNDARY,
@@ -20,7 +20,7 @@ interface SerializedGenerator {
 	/**
 	 * The version of the serialization format.
 	 */
-	version: 1;
+	version: 2;
 	/**
 	 * The highest order model used by the generator.
 	 */
@@ -38,9 +38,9 @@ interface SerializedGenerator {
 	 */
 	alphabet: string[];
 	/**
-	 * The Markov chains of each model, from highest to lowest order, as [context, cumulative weights] pairs with one weight per alphabet symbol in alphabet order.
+	 * The Markov chains of each model, from highest to lowest order, as [context, [symbol index, count]] pairs with one pair per observed symbol. Symbol indices refer to the alphabet.
 	 */
-	models: { order: number; chains: [string, number[]][] }[];
+	models: { order: number; chains: [string, [number, number][]][] }[];
 }
 
 /**
@@ -124,11 +124,12 @@ class Generator {
 	/**
 	 * Generates a word, including the leading boundary markers (one "#" per order).
 	 * @param   maxLength When supplied, returns null if generation cannot terminate within this length. Without a maximum length, generation can loop indefinitely when no reachable context predicts the boundary marker, which is possible with a prior of 0 and cyclic training data.
+	 * @param   random  Optional random source used for this call, overriding the sources bound at construction.
 	 * @return The generated word, or null if it could not be generated within the given length.
 	 */
 	generate(): string;
-	generate(maxLength: number): string | null;
-	generate(maxLength?: number): string | null {
+	generate(maxLength: number, random?: RandomSource): string | null;
+	generate(maxLength?: number, random?: RandomSource): string | null {
 		if (maxLength !== undefined) {
 			assert(
 				Number.isInteger(maxLength) && maxLength >= 0,
@@ -138,7 +139,7 @@ class Generator {
 
 		let word = BOUNDARY.repeat(this.order);
 		let generatedLength = 0;
-		let letter = this.getLetter(word);
+		let letter = this.getLetter(word, random);
 
 		while (letter !== "#" && letter != null) {
 			if (maxLength !== undefined && generatedLength >= maxLength) {
@@ -146,7 +147,7 @@ class Generator {
 			}
 			word += letter;
 			generatedLength++;
-			letter = this.getLetter(word);
+			letter = this.getLetter(word, random);
 		}
 
 		if (maxLength !== undefined && letter === null) {
@@ -159,15 +160,16 @@ class Generator {
 	/**
 	 * Generates the next letter in a word.
 	 * @param   word The context the models will use for generating the next letter.
+	 * @param   random  Optional random source used for this call, overriding the sources bound at construction.
 	 * @return  The generated letter, or null if no model could generate one.
 	 */
-	private getLetter(word: string): string | null {
+	private getLetter(word: string, random?: RandomSource): string | null {
 		assert(word.length > 0);
 
 		let letter: string | null = null;
 		let context = contextFrom(word, this.order);
 		for (const model of this._models) {
-			letter = model.generate(context);
+			letter = model.generate(context, random);
 			if (letter == null) {
 				context = Array.from(context).slice(1).join("");
 			} else {
@@ -189,7 +191,7 @@ class Generator {
 		assert(first !== undefined);
 		return {
 			format: "markov-namegen/generator",
-			version: 1,
+			version: 2,
 			order: this.order,
 			prior: this.prior,
 			backoff: this._backoff,
@@ -222,13 +224,13 @@ class Generator {
 	): Generator {
 		const state = parseSerializedGenerator(json);
 		const models = state.models.map((model) => {
-			const payload: SerializedModel = {
+			const payload = {
 				format: "markov-namegen/model",
-				version: 1,
+				version: state.version,
 				order: model.order,
 				prior: state.prior,
 				alphabet: state.alphabet,
-				chains: model.chains as [string, number[]][],
+				chains: model.chains,
 			};
 			return Model.deserialize(payload, random);
 		});
@@ -244,6 +246,7 @@ class Generator {
 }
 
 function parseSerializedGenerator(json: unknown): {
+	version: 1 | 2;
 	order: number;
 	prior: number;
 	backoff: boolean;
@@ -259,7 +262,11 @@ function parseSerializedGenerator(json: unknown): {
 		record.format === "markov-namegen/generator",
 		'Serialized generator format must be "markov-namegen/generator"',
 	);
-	assert(record.version === 1, "Serialized generator version must be 1");
+	const version = record.version;
+	assert(
+		version === 1 || version === 2,
+		"Serialized generator version must be 1 or 2",
+	);
 
 	const order = record.order;
 	assert(
@@ -311,6 +318,7 @@ function parseSerializedGenerator(json: unknown): {
 	});
 
 	return {
+		version,
 		order,
 		prior,
 		backoff,

@@ -12,6 +12,26 @@ function createRandomSource(): () => number {
 	};
 }
 
+function denseChains(
+	chains: [string, [number, number][]][],
+	alphabetLength: number,
+	prior: number,
+): [string, number[]][] {
+	return chains.map(([context, pairs]) => {
+		const counts = new Array<number>(alphabetLength).fill(0);
+		for (const [index, count] of pairs) {
+			counts[index] = count;
+		}
+		const chain: number[] = [];
+		let total = 0;
+		for (const count of counts) {
+			total += prior + count;
+			chain.push(total);
+		}
+		return [context, chain];
+	});
+}
+
 test("training does not mutate the input data", () => {
 	const data = ["alpha", "beta"];
 	new Generator(data, 2, 0, false);
@@ -335,48 +355,87 @@ test("positional generateNames fills the batch within the time budget", () => {
 });
 
 test("rejects invalid serialized models", () => {
-	const valid = new Model(["ab"], 2, 0, ["#", "a", "b"]).serialize();
+	const v2 = new Model(["ab"], 2, 0, ["#", "a", "b"]).serialize();
+	const v1 = {
+		...v2,
+		version: 1,
+		chains: denseChains(v2.chains, v2.alphabet.length, v2.prior),
+	};
 
 	assert.throws(() => Model.deserialize(null), /must be a JSON object/);
 	assert.throws(
-		() => Model.deserialize({ ...valid, format: "markov-namegen/generator" }),
+		() => Model.deserialize({ ...v2, format: "markov-namegen/generator" }),
 		/format must be/,
 	);
-	assert.throws(() => Model.deserialize({ ...valid, version: 2 }), /version/);
+	assert.throws(() => Model.deserialize({ ...v2, version: 3 }), /version/);
 	assert.throws(
-		() => Model.deserialize({ ...valid, order: 3 }),
+		() => Model.deserialize({ ...v2, order: 3 }),
 		/Chain contexts must be exactly/,
 	);
 	assert.throws(
-		() => Model.deserialize({ ...valid, alphabet: ["#", "a", "b", "c"] }),
+		() => Model.deserialize({ ...v2, alphabet: ["#", "a", "a", "b"] }),
+		/Alphabet must not contain duplicate symbols/,
+	);
+
+	assert.throws(
+		() => Model.deserialize({ ...v1, alphabet: ["#", "a", "b", "c"] }),
 		/one weight per alphabet symbol/,
 	);
 	assert.throws(
-		() => Model.deserialize({ ...valid, chains: [["##", [2, 1, 3]]] }),
+		() => Model.deserialize({ ...v1, chains: [["##", [2, 1, 3]]] }),
 		/non-decreasing/,
 	);
 	assert.throws(
-		() => Model.deserialize({ ...valid, chains: [["##", [0, 0, 0]]] }),
+		() => Model.deserialize({ ...v1, chains: [["##", [0, 0, 0]]] }),
+		/positive total/,
+	);
+	assert.throws(
+		() => Model.deserialize({ ...v1, chains: [["##", ["1", 2, 3]]] }),
+		/Chain weights must be finite non-negative numbers/,
+	);
+
+	assert.throws(
+		() => Model.deserialize({ ...v2, chains: [["##", [[5, 1]]]] }),
+		/symbol indices must be integers within the alphabet/,
+	);
+	assert.throws(
+		() =>
+			Model.deserialize({
+				...v2,
+				chains: [
+					[
+						"##",
+						[
+							[1, 1],
+							[1, 2],
+						],
+					],
+				],
+			}),
+		/symbol indices must be unique/,
+	);
+	assert.throws(
+		() => Model.deserialize({ ...v2, chains: [["##", [[1, 0]]]] }),
+		/Chain counts must be positive integers/,
+	);
+	assert.throws(
+		() => Model.deserialize({ ...v2, chains: [["##", [[1, 1.5]]]] }),
+		/Chain counts must be positive integers/,
+	);
+	assert.throws(
+		() => Model.deserialize({ ...v2, chains: [["##", []]] }),
 		/positive total/,
 	);
 	assert.throws(
 		() =>
 			Model.deserialize({
-				...valid,
+				...v2,
 				chains: [
-					["##", [1, 2, 3]],
-					["##", [4, 5, 6]],
+					["##", [[1, 1]]],
+					["##", [[1, 2]]],
 				],
 			}),
-		/unique/,
-	);
-	assert.throws(
-		() => Model.deserialize({ ...valid, alphabet: ["#", "a", "a", "b"] }),
-		/Alphabet must not contain duplicate symbols/,
-	);
-	assert.throws(
-		() => Model.deserialize({ ...valid, chains: [["##", ["1", 2, 3]]] }),
-		/Chain weights must be finite non-negative numbers/,
+		/Chain contexts must be unique/,
 	);
 });
 
@@ -404,5 +463,117 @@ test("rejects invalid serialized generators", () => {
 	assert.throws(
 		() => Generator.deserialize({ ...valid, models: [null] }),
 		/Each model must be a JSON object/,
+	);
+	assert.throws(
+		() => Generator.deserialize({ ...valid, version: 3 }),
+		/version/,
+	);
+});
+
+test("version 1 and version 2 payloads produce identical models", () => {
+	const model = new Model(
+		["anna", "anne", "ann", "jonni"],
+		2,
+		0.1,
+		["#", "a", "e", "i", "j", "n", "o"],
+		createRandomSource(),
+	);
+	const v2 = model.serialize();
+	const v1 = {
+		...v2,
+		version: 1,
+		chains: denseChains(v2.chains, v2.alphabet.length, v2.prior),
+	};
+
+	const fromV1 = Model.deserialize(v1, createRandomSource());
+	const fromV2 = Model.deserialize(v2, createRandomSource());
+
+	assert.deepEqual(fromV1.serialize(), fromV2.serialize());
+	const letters = (candidate: Model) =>
+		["##", "#a", "an", "nn", "jo"].map((context) =>
+			candidate.generate(context),
+		);
+	assert.deepEqual(letters(fromV1), letters(fromV2));
+
+	const generator = new Generator(["ab"], 2, 0, false, createRandomSource());
+	const generatorV2 = generator.serialize();
+	const generatorV1 = {
+		...generatorV2,
+		version: 1,
+		models: generatorV2.models.map((serialized) => ({
+			order: serialized.order,
+			chains: denseChains(
+				serialized.chains,
+				generatorV2.alphabet.length,
+				generatorV2.prior,
+			),
+		})),
+	};
+
+	assert.deepEqual(
+		Generator.deserialize(generatorV1, createRandomSource()).serialize(),
+		Generator.deserialize(generatorV2, createRandomSource()).serialize(),
+	);
+});
+
+test("per-call random overrides the bound source", () => {
+	const model = new Model(
+		["ab", "ac"],
+		1,
+		0,
+		["#", "a", "b", "c"],
+		() => 0.999,
+	);
+
+	assert.equal(model.generate("a"), "c");
+	assert.equal(
+		model.generate("a", () => 0),
+		"b",
+	);
+	assert.equal(model.generate("a"), "c");
+
+	const generator = new Generator(["ab", "ac"], 1, 0, false, () => 0.999);
+	assert.equal(generator.generate(2), "#ac");
+	assert.equal(
+		generator.generate(2, () => 0),
+		"#ab",
+	);
+	assert.equal(generator.generate(2), "#ac");
+});
+
+test("generateName and generateNames accept a per-call random override", () => {
+	let boundCalls = 0;
+	const generator = new NameGenerator(["ab", "ac"], 1, 0, false, () => {
+		boundCalls++;
+		return 0.999;
+	});
+	let overrideCalls = 0;
+	const name = generator.generateName({
+		minLength: 2,
+		maxLength: 2,
+		random: () => {
+			overrideCalls++;
+			return 0.5;
+		},
+	});
+
+	assert.equal(name, "ac");
+	assert.equal(boundCalls, 0);
+	assert.ok(overrideCalls > 0);
+
+	assert.equal(generator.generateName(2, 2, "", "", "", ""), "ac");
+	assert.ok(boundCalls > 0);
+
+	assert.deepEqual(
+		generator.generateNames(2, {
+			minLength: 2,
+			maxLength: 2,
+			random: () => 0.5,
+		}),
+		["ac", "ac"],
+	);
+	assert.deepEqual(
+		generator.generateNames(2, 2, 2, "", "", "", "", 200, null, () => 0.5),
+		["ac", "ac"],
 	);
 });
