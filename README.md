@@ -13,6 +13,7 @@ Offers most of the features available in the reference Haxe implementation
 - A simplified [Katz back-off](https://en.wikipedia.org/wiki/Katz%27s_back-off_model) using high order models - look up to "n" characters back.
 - Sort and filter generated strings by length, start, end, and content.
 - [Dirichlet prior](https://en.wikipedia.org/wiki/Dirichlet_distribution#Special_cases) parameter.
+- Serialization of models and generators to JSON, with runtime-validated deserialization.
 
 ## Usage
 
@@ -52,6 +53,22 @@ console.log(namegen.generateNames(20, 5, 11, "", "", "", ""));
 ```
 
 For training data and word lists, see [the original project's `word_lists` folder](https://github.com/Tw1ddle/markov-namegen-lib/tree/master/word_lists).
+
+## Serialization
+
+Generators and models can be serialized to plain JSON-serializable objects and rebuilt later. The random source cannot be serialized, so it is supplied when deserializing (defaulting to `Math.random`).
+
+```ts
+import { Generator } from "@ksilvennoinen/markov-namegen";
+
+const generator = new Generator(data, 3, 0.1, true);
+const json = JSON.stringify(generator); // toJSON returns the serialized form
+
+const revived = Generator.deserialize(JSON.parse(json));
+revived.generate(12); // with the same random source, output matches the original
+```
+
+`serialize()` returns an object typed as `SerializedGenerator` (or `SerializedModel` for a single `Model`) rather than a string, so it can also be stored directly in databases or passed to `structuredClone`. `deserialize` takes `unknown`, validates the whole payload at runtime, and throws a descriptive error on malformed input. The format is self-describing: `format` distinguishes generator payloads from model payloads, and `version` will be bumped if the format ever changes.
 
 ## Notes
 

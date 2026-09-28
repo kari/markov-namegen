@@ -1,5 +1,5 @@
 import { assert } from "./assert.js";
-import { Generator } from "./generator.js";
+import { Generator, type SerializedGenerator } from "./generator.js";
 import type { RandomSource } from "./model.js";
 
 interface NameGenerationOptions {
@@ -259,6 +259,43 @@ class NameGenerator {
 		}
 
 		return names;
+	}
+
+	/**
+	 * Serializes the name generator into a plain JSON-serializable object. It has no state beyond its underlying Generator.
+	 * The random source cannot be serialized, so it must be supplied when deserializing.
+	 * @return  The serialized name generator.
+	 */
+	serialize(): SerializedGenerator {
+		return this._generator.serialize();
+	}
+
+	/**
+	 * Returns the serialized form of this name generator, used by JSON.stringify.
+	 * @return  The serialized name generator.
+	 */
+	toJSON(): SerializedGenerator {
+		return this._generator.serialize();
+	}
+
+	/**
+	 * Rebuilds a name generator from its serialized form.
+	 * The payload is validated at runtime, and malformed input throws an error.
+	 * @param   json    The serialized name generator, as produced by serialize().
+	 * @param   random  The random source used when generating, defaults to Math.random.
+	 * @return  The deserialized name generator.
+	 */
+	static deserialize(
+		json: unknown,
+		random: RandomSource = Math.random,
+	): NameGenerator {
+		const nameGenerator = Object.create(
+			NameGenerator.prototype,
+		) as NameGenerator;
+		Object.assign(nameGenerator, {
+			_generator: Generator.deserialize(json, random),
+		});
+		return nameGenerator;
 	}
 }
 

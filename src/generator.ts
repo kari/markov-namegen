@@ -1,12 +1,47 @@
 import { assert } from "./assert.js";
-import { Model, type RandomSource } from "./model.js";
+import { Model, type RandomSource, type SerializedModel } from "./model.js";
 import type { TrainingData } from "./training.js";
 import {
 	BOUNDARY,
 	buildAlphabet,
 	contextFrom,
+	validateAlphabet,
 	validateTrainingData,
 } from "./training.js";
+
+/**
+ * The serialized form of a Generator, as produced by Generator.serialize and accepted by Generator.deserialize.
+ */
+interface SerializedGenerator {
+	/**
+	 * Discriminator distinguishing generator payloads from other markov-namegen payloads.
+	 */
+	format: "markov-namegen/generator";
+	/**
+	 * The version of the serialization format.
+	 */
+	version: 1;
+	/**
+	 * The highest order model used by the generator.
+	 */
+	order: number;
+	/**
+	 * The dirichlet prior shared by all models.
+	 */
+	prior: number;
+	/**
+	 * Whether the generator falls back to lower order models when a higher order model fails to generate a letter.
+	 */
+	backoff: boolean;
+	/**
+	 * The alphabet shared by all models, including the "#" boundary marker.
+	 */
+	alphabet: string[];
+	/**
+	 * The Markov chains of each model, from highest to lowest order, as [context, cumulative weights] pairs with one weight per alphabet symbol in alphabet order.
+	 */
+	models: { order: number; chains: [string, number[]][] }[];
+}
 
 /**
  * A procedural word generator that uses Markov chains built from a user-provided array of words.
@@ -142,6 +177,147 @@ class Generator {
 
 		return letter;
 	}
+
+	/**
+	 * Serializes the generator into a plain JSON-serializable object. The alphabet is shared by all models and serialized once.
+	 * The random source cannot be serialized, so it must be supplied when deserializing.
+	 * @return  The serialized generator.
+	 */
+	serialize(): SerializedGenerator {
+		const serializedModels = this._models.map((model) => model.serialize());
+		const first = serializedModels[0];
+		assert(first !== undefined);
+		return {
+			format: "markov-namegen/generator",
+			version: 1,
+			order: this.order,
+			prior: this.prior,
+			backoff: this._backoff,
+			alphabet: first.alphabet,
+			models: serializedModels.map(({ order, chains }) => ({
+				order,
+				chains,
+			})),
+		};
+	}
+
+	/**
+	 * Returns the serialized form of this generator, used by JSON.stringify.
+	 * @return  The serialized generator.
+	 */
+	toJSON(): SerializedGenerator {
+		return this.serialize();
+	}
+
+	/**
+	 * Rebuilds a generator from its serialized form.
+	 * The payload is validated at runtime, and malformed input throws an error.
+	 * @param   json    The serialized generator, as produced by serialize().
+	 * @param   random  The random source used when generating, defaults to Math.random.
+	 * @return  The deserialized generator.
+	 */
+	static deserialize(
+		json: unknown,
+		random: RandomSource = Math.random,
+	): Generator {
+		const state = parseSerializedGenerator(json);
+		const models = state.models.map((model) => {
+			const payload: SerializedModel = {
+				format: "markov-namegen/model",
+				version: 1,
+				order: model.order,
+				prior: state.prior,
+				alphabet: state.alphabet,
+				chains: model.chains as [string, number[]][],
+			};
+			return Model.deserialize(payload, random);
+		});
+		const generator = Object.create(Generator.prototype) as Generator;
+		Object.assign(generator, {
+			order: state.order,
+			prior: state.prior,
+			_backoff: state.backoff,
+			_models: models,
+		});
+		return generator;
+	}
 }
 
+function parseSerializedGenerator(json: unknown): {
+	order: number;
+	prior: number;
+	backoff: boolean;
+	alphabet: string[];
+	models: { order: number; chains: unknown }[];
+} {
+	assert(
+		typeof json === "object" && json !== null && !Array.isArray(json),
+		"Serialized generator must be a JSON object",
+	);
+	const record = json as Record<string, unknown>;
+	assert(
+		record.format === "markov-namegen/generator",
+		'Serialized generator format must be "markov-namegen/generator"',
+	);
+	assert(record.version === 1, "Serialized generator version must be 1");
+
+	const order = record.order;
+	assert(
+		typeof order === "number" && Number.isInteger(order) && order >= 1,
+		"Order must be a positive integer",
+	);
+
+	const prior = record.prior;
+	assert(
+		typeof prior === "number" &&
+			Number.isFinite(prior) &&
+			prior >= 0 &&
+			prior <= 1,
+		"Prior must be a finite number between 0 and 1",
+	);
+
+	const backoff = record.backoff;
+	assert(typeof backoff === "boolean", "Backoff must be a boolean");
+
+	const alphabet = validateAlphabet(record.alphabet);
+
+	const models = record.models;
+	assert(
+		Array.isArray(models) && models.length > 0,
+		"Models must be a non-empty array of serialized models",
+	);
+	const expectedOrders = backoff
+		? Array.from({ length: order }, (_, i) => order - i)
+		: [order];
+	assert(
+		models.length === expectedOrders.length,
+		`Serialized generator must contain ${expectedOrders.length} models`,
+	);
+	const parsedModels = models.map((model, index) => {
+		assert(
+			typeof model === "object" && model !== null && !Array.isArray(model),
+			"Each model must be a JSON object",
+		);
+		const modelRecord = model as Record<string, unknown>;
+		const expectedOrder = expectedOrders[index];
+		assert(
+			expectedOrder !== undefined && modelRecord.order === expectedOrder,
+			`Model at index ${index} must have order ${expectedOrder}`,
+		);
+		return {
+			order: modelRecord.order as number,
+			chains: modelRecord.chains,
+		};
+	});
+
+	return {
+		order,
+		prior,
+		backoff,
+		alphabet,
+		models: parsedModels,
+	};
+}
+
+export type { SerializedGenerator };
 export { Generator };

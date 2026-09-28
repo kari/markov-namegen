@@ -1,8 +1,42 @@
 import { assert } from "./assert.js";
 import type { TrainingData } from "./training.js";
-import { buildAlphabet, validateTrainingData } from "./training.js";
+import {
+	buildAlphabet,
+	validateAlphabet,
+	validateTrainingData,
+} from "./training.js";
 
 type RandomSource = () => number;
+
+/**
+ * The serialized form of a Model, as produced by Model.serialize and accepted by Model.deserialize.
+ */
+interface SerializedModel {
+	/**
+	 * Discriminator distinguishing model payloads from other markov-namegen payloads.
+	 */
+	format: "markov-namegen/model";
+	/**
+	 * The version of the serialization format.
+	 */
+	version: 1;
+	/**
+	 * The order of the model i.e. how many characters the model looks back.
+	 */
+	order: number;
+	/**
+	 * The dirichlet prior used by the model.
+	 */
+	prior: number;
+	/**
+	 * The alphabet of the model, including the "#" boundary marker.
+	 */
+	alphabet: string[];
+	/**
+	 * The Markov chains as [context, cumulative weights] pairs, with one weight per alphabet symbol in alphabet order.
+	 */
+	chains: [string, number[]][];
+}
 
 /**
  * A Markov model built using string training data.
@@ -44,18 +78,10 @@ class Model {
 		private readonly random: RandomSource = Math.random,
 	) {
 		validateTrainingData(data);
-		assert(alphabet.length > 0, "Alphabet must not be empty");
-		assert(
-			alphabet.includes("#"),
-			"Alphabet must include '#' as the boundary marker",
-		);
-		assert(
-			alphabet.length === new Set(alphabet).size,
-			"Alphabet must not contain duplicate symbols",
-		);
+		const validatedAlphabet = validateAlphabet(alphabet);
 		assert(
 			data.every((word) =>
-				Array.from(word).every((symbol) => alphabet.includes(symbol)),
+				Array.from(word).every((symbol) => validatedAlphabet.includes(symbol)),
 			),
 			"Alphabet must include every symbol in the training data",
 		);
@@ -70,7 +96,7 @@ class Model {
 
 		this._order = order;
 		this._prior = prior;
-		this._alphabet = [...alphabet];
+		this._alphabet = validatedAlphabet;
 
 		this._observations = new Map<string, Map<string, number>>();
 		this.train(data);
@@ -102,6 +128,54 @@ class Model {
 		this._observations = new Map<string, Map<string, number>>();
 		this.train(data);
 		this.buildChains();
+	}
+
+	/**
+	 * Serializes the model into a plain JSON-serializable object. The observations are not serialized as the Markov chains fully determine generation.
+	 * The random source cannot be serialized, so it must be supplied when deserializing.
+	 * @return  The serialized model.
+	 */
+	serialize(): SerializedModel {
+		return {
+			format: "markov-namegen/model",
+			version: 1,
+			order: this._order,
+			prior: this._prior,
+			alphabet: [...this._alphabet],
+			chains: [...this._chains].map(([context, chain]): [string, number[]] => [
+				context,
+				[...chain],
+			]),
+		};
+	}
+
+	/**
+	 * Returns the serialized form of this model, used by JSON.stringify.
+	 * @return  The serialized model.
+	 */
+	toJSON(): SerializedModel {
+		return this.serialize();
+	}
+
+	/**
+	 * Rebuilds a model from its serialized form.
+	 * The payload is validated at runtime, and malformed input throws an error. The deserialized model does not retain the training observations, which are not needed for generation; retrain() rebuilds them when retraining on new data.
+	 * @param   json    The serialized model, as produced by serialize().
+	 * @param   random  The random source used when generating, defaults to Math.random.
+	 * @return  The deserialized model.
+	 */
+	static deserialize(json: unknown, random: RandomSource = Math.random): Model {
+		const state = parseSerializedModel(json);
+		const model = Object.create(Model.prototype) as Model;
+		Object.assign(model, {
+			_order: state.order,
+			_prior: state.prior,
+			_alphabet: state.alphabet,
+			_observations: new Map<string, Map<string, number>>(),
+			_chains: state.chains,
+			random,
+		});
+		return model;
 	}
 
 	/**
@@ -167,5 +241,91 @@ class Model {
 	}
 }
 
-export type { RandomSource };
+function parseSerializedModel(json: unknown): {
+	order: number;
+	prior: number;
+	alphabet: string[];
+	chains: Map<string, number[]>;
+} {
+	assert(
+		typeof json === "object" && json !== null && !Array.isArray(json),
+		"Serialized model must be a JSON object",
+	);
+	const record = json as Record<string, unknown>;
+	assert(
+		record.format === "markov-namegen/model",
+		'Serialized model format must be "markov-namegen/model"',
+	);
+	assert(record.version === 1, "Serialized model version must be 1");
+
+	const order = record.order;
+	assert(
+		typeof order === "number" && Number.isInteger(order) && order >= 1,
+		"Order must be a positive integer",
+	);
+
+	const prior = record.prior;
+	assert(
+		typeof prior === "number" &&
+			Number.isFinite(prior) &&
+			prior >= 0 &&
+			prior <= 1,
+		"Prior must be a finite number between 0 and 1",
+	);
+
+	const alphabet = validateAlphabet(record.alphabet);
+
+	const chains = record.chains;
+	assert(
+		Array.isArray(chains),
+		"Chains must be an array of [context, weights] pairs",
+	);
+	const chainMap = new Map<string, number[]>();
+	for (const entry of chains) {
+		assert(
+			Array.isArray(entry) && entry.length === 2,
+			"Chains must be an array of [context, weights] pairs",
+		);
+		const [context, weights] = entry;
+		assert(typeof context === "string", "Chain contexts must be strings");
+		assert(
+			Array.from(context).length === order,
+			"Chain contexts must be exactly 'order' symbols long",
+		);
+		assert(
+			Array.from(context).every((symbol) => alphabet.includes(symbol)),
+			"Chain contexts must only contain alphabet symbols",
+		);
+		assert(!chainMap.has(context), "Chain contexts must be unique");
+		assert(
+			Array.isArray(weights) && weights.length === alphabet.length,
+			"Each chain must have exactly one weight per alphabet symbol",
+		);
+		const parsed: number[] = [];
+		let total = 0;
+		for (const weight of weights) {
+			assert(
+				typeof weight === "number" && Number.isFinite(weight) && weight >= 0,
+				"Chain weights must be finite non-negative numbers",
+			);
+			assert(
+				weight >= total,
+				"Chain weights must be non-decreasing cumulative totals",
+			);
+			total = weight;
+			parsed.push(weight);
+		}
+		assert(total > 0, "Each chain must have a positive total weight");
+		chainMap.set(context, parsed);
+	}
+
+	return {
+		order,
+		prior,
+		alphabet,
+		chains: chainMap,
+	};
+}
+
+export type { RandomSource, SerializedModel };
 export { Model };
